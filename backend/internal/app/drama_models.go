@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"yingce/backend/internal/model"
 	"yingce/backend/internal/production"
 )
 
@@ -28,7 +29,7 @@ func dramaModelIntent(capability string) *ModelRequestIntent {
 
 // dramaSegmentOperation 是剧情段视频在该衔接方式下的主要生成方式，用于报价与能力校验。
 func dramaSegmentOperation(settings DramaSettings, profile dramaVideoProfile) (string, map[string]int) {
-	if !settings.parallelVideo() {
+	if !settings.parallelVideo() && !profile.ContinuityAsReference {
 		return "image_to_video", map[string]int{"image": 1}
 	}
 	if profile.supports("reference_to_video") {
@@ -315,9 +316,11 @@ func missingDramaCapabilities(models DramaModels) []string {
 // dramaVideoProfile 是视频模型能力合同中短剧需要的部分：时长档位、支持的生成方式、参考图上限、
 // 是否同步生成声音，以及换算作品画幅所需的比例与分辨率声明。
 type dramaVideoProfile struct {
-	Durations  production.DurationOptions
-	Operations []string
-	MaxImages  int
+	// MiniMax 首尾帧与多模态参考互斥，续接时将上一段尾帧作为普通参考图。
+	ContinuityAsReference bool
+	Durations             production.DurationOptions
+	Operations            []string
+	MaxImages             int
 	// MaxAudios / MaxAudioSeconds 是参考音频的张数与单段时长上限（秒，0 表示未声明），用于随段发送角色声音样本。
 	MaxAudios       int
 	MaxAudioSeconds int
@@ -362,7 +365,10 @@ func (p dramaVideoProfile) maxSeconds() int {
 
 // continuityIssue 返回模型不支持作品段落衔接方式的原因；空串表示可用。
 func (p dramaVideoProfile) continuityIssue(settings DramaSettings) string {
-	if !settings.parallelVideo() && !p.supports("image_to_video") {
+	if !settings.parallelVideo() && p.ContinuityAsReference && !p.supports("reference_to_video") {
+		return "所选 MiniMax 视频模型不支持参考图生视频，无法同时使用衔接图与角色参考图"
+	}
+	if !settings.parallelVideo() && !p.ContinuityAsReference && !p.supports("image_to_video") {
 		return "所选视频模型不支持图生视频，无法用上一段尾帧续接；请在制作设置里改用“并行出片”或换用支持图生视频的模型"
 	}
 	return ""
@@ -370,6 +376,7 @@ func (p dramaVideoProfile) continuityIssue(settings DramaSettings) string {
 
 func (s *Service) dramaVideoProfile(choice DramaModelChoice) (dramaVideoProfile, error) {
 	var capability *ModelCapabilityConfig
+	var protocol model.ChannelInterfaceType
 	if choice.LogicalModelID != "" {
 		// 只读取能力画像；用户授权在任务准入时按分组校验。
 		routed, err := s.ResolveLogicalModel(nil, choice.LogicalModelID, *dramaModelIntent("video"))
@@ -380,6 +387,7 @@ func (s *Service) dramaVideoProfile(choice DramaModelChoice) (dramaVideoProfile,
 			return dramaVideoProfile{}, errors.New("视频模型路由不存在")
 		}
 		var parseErr error
+		protocol = routed.ChannelModel.Protocol
 		capability, parseErr = normalizedChannelModelCapability(&routed.ChannelModel, s.protocolRegistry())
 		if parseErr != nil {
 			return dramaVideoProfile{}, parseErr
@@ -390,6 +398,7 @@ func (s *Service) dramaVideoProfile(choice DramaModelChoice) (dramaVideoProfile,
 			return dramaVideoProfile{}, err
 		}
 		capability, err = normalizedChannelModelCapability(row, s.protocolRegistry())
+		protocol = row.Protocol
 		if err != nil {
 			return dramaVideoProfile{}, err
 		}
@@ -403,6 +412,7 @@ func (s *Service) dramaVideoProfile(choice DramaModelChoice) (dramaVideoProfile,
 	options := dramaDurationOptions(video.Duration)
 	// 不声明同步生成声音的模型也可以用：段视频没有对白与音效，由用户在选模型时自行取舍。
 	profile := dramaVideoProfile{Durations: options, Operations: video.Operations, MaxImages: video.References.MaxImages, MaxAudios: max(video.References.MaxAudios, 0), MaxAudioSeconds: max(video.References.MaxAudioDuration, 0), GenerateAudio: video.GenerateAudio.Supported, PromptMaxChars: max(video.References.PromptMaxChars, 0), video: video}
+	profile.ContinuityAsReference = protocol == model.ChannelInterfaceMiniMaxVideo
 	if profile.maxSeconds() <= 0 {
 		return profile, errors.New("未声明可生成时长，无法按剧情段切分")
 	}
@@ -915,6 +925,9 @@ func (s *Service) dramaModelOption(choice DramaModelChoice, capability, label, p
 		if profile, err := s.dramaVideoProfile(choice); err == nil {
 			option.MaxVideoSeconds = profile.maxSeconds()
 			option.TailFrameChain = profile.supports("image_to_video")
+			if profile.ContinuityAsReference {
+				option.TailFrameChain = profile.supports("reference_to_video")
+			}
 			option.VideoRatios = profile.ratios()
 			audio := profile.GenerateAudio
 			option.GenerateAudio = &audio

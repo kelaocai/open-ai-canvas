@@ -3111,6 +3111,26 @@ func TestRunMiniMaxVideoTaskSendsOfficial2KResolution(t *testing.T) {
 	}
 }
 
+func TestRunMiniMaxVideoTaskReturnsCapitalizedBusinessError(t *testing.T) {
+	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "127.0.0.1")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v2/video_generation" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"Message":"Params [Mode/reference inputs] not available","RetCode":230,"request_uuid":"request-1"}`))
+	}))
+	defer server.Close()
+
+	_, err := runVideoTaskForTest(context.Background(), canvasGenerationInput{
+		Mode: "video", Prompt: "make it move",
+		Config: providerConfig{BaseURL: server.URL, APIKey: "test-key", Model: "MiniMax-H3", InterfaceType: "minimax-video", VideoSeconds: "14", VQuality: "480P"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "Params [Mode/reference inputs] not available") || strings.Contains(err.Error(), "没有返回任务 ID") {
+		t.Fatalf("runVideoTask() error = %v", err)
+	}
+}
+
 func TestRunMiniMaxVideoTaskUsesExplicitReferenceRoles(t *testing.T) {
 	t.Setenv("CANVAS_ALLOW_PRIVATE_UPSTREAMS", "true")
 	var server *httptest.Server

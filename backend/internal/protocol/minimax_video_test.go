@@ -49,6 +49,31 @@ func TestMiniMaxVideoDurationRange(t *testing.T) {
 	}
 }
 
+func TestMiniMaxVideoRejectsMixedKeyframesAndReferences(t *testing.T) {
+	adapter := officialPackageAdapter(t, "minimax-hailuo-video-v2.yingce-plugin", "minimax-video")
+	_, err := adapter.BuildCreate(context.Background(), RequestContext{Request: GenerationRequest{
+		Model: "MiniMax-H3", Prompt: "a clip", Duration: 14,
+		Images: []MediaReference{
+			{URL: "https://cdn.example/first.png", Role: "first_frame"},
+			{URL: "https://cdn.example/character.png", Role: "reference_image"},
+		},
+	}})
+	if err == nil || !strings.Contains(err.Error(), "首尾帧不能与参考图、参考视频或参考音频混用") {
+		t.Fatalf("BuildCreate() error = %v", err)
+	}
+}
+
+func TestMiniMaxVideoCreateReadsCapitalizedBusinessError(t *testing.T) {
+	adapter := officialPackageAdapter(t, "minimax-hailuo-video-v2.yingce-plugin", "minimax-video")
+	created, err := adapter.ParseCreate(context.Background(), []byte(`{"Message":"Params [Mode/reference inputs] not available","RetCode":230,"request_uuid":"request-1"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Status != StatusFailed || created.Message != "Params [Mode/reference inputs] not available" || created.TaskID != "" {
+		t.Fatalf("create = %#v", created)
+	}
+}
+
 func TestMiniMaxVideoFailureMessages(t *testing.T) {
 	adapter := officialPackageAdapter(t, "minimax-hailuo-video-v2.yingce-plugin", "minimax-video")
 	const dimensionError = "content[1].image_url: media dimensions must be between 256 and 5760 pixels"

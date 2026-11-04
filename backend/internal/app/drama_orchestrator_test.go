@@ -60,7 +60,7 @@ func (f *fakeDramaBackend) submit(userID string, req CreateTaskRequest, timeline
 		switch {
 		case strings.Contains(system, "作品圣经"):
 			f.byKind["bible"]++
-			result = map[string]any{"mode": "text", "text": `{"logline":"退婚少年逆袭","visualRules":"冷色调","characters":[{"name":"萧炎","aliases":["炎儿"],"appearance":"黑发少年"},{"name":"纳兰嫣然","appearance":"白衣少女"}],"props":[{"name":"退婚书","appearance":"烫金红纸卷轴"}],"scenes":[{"name":"萧家大厅","appearance":"古朴大厅"}]}`}
+			result = map[string]any{"mode": "text", "text": `{"logline":"退婚少年逆袭","visualRules":"9:16竖屏构图，冷色调","characters":[{"name":"萧炎","aliases":["炎儿"],"appearance":"黑发少年"},{"name":"纳兰嫣然","appearance":"白衣少女"}],"props":[{"name":"退婚书","appearance":"烫金红纸卷轴"}],"scenes":[{"name":"萧家大厅","appearance":"古朴大厅"}]}`}
 		case strings.Contains(system, "整段视频提示词"):
 			f.byKind["segment_prompt"]++
 			result = map[string]any{"mode": "text", "text": "```\n第1段视频《退婚·登门》——纳兰嫣然当众退婚\n3秒｜9:16｜写实电影感｜中文对白｜无字幕｜1个主镜头\n\n【视觉与首帧】\n萧家大厅，纳兰嫣然立于厅中央，面朝萧炎。\n\n【00.00—03.00秒｜镜头一：当众退婚】\n50mm近景。纳兰嫣然抬手：“我今日来，是要退婚。”\n```"}

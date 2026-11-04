@@ -282,7 +282,7 @@ export function buildDramaSegmentGroup(input: {
     let firstFrameNode: CanvasNodeData | undefined;
     if (segment.request.firstFrameResourceId) {
         const size = dramaMediaSize(input.aspectRatio, 288);
-        const node = mediaNode(CanvasNodeType.Image, `首帧 · 第 ${segment.index} 段尾帧`, segment.request.firstFrameResourceId, media, { assetCategory: "material" });
+        const node = mediaNode(CanvasNodeType.Image, `${segment.request.operation === "reference_to_video" ? "衔接参考" : "首帧"} · 第 ${segment.index} 段尾帧`, segment.request.firstFrameResourceId, media, { assetCategory: "material" });
         firstFrameNode = { ...node, position: { x, y: contentTop }, width: size.width, height: size.height };
         children.push(firstFrameNode);
         x += size.width + GROUP_GAP;
@@ -295,7 +295,7 @@ export function buildDramaSegmentGroup(input: {
         composerContent: prompt,
         generationMode: "video",
         videoEditOperation: SEGMENT_OPERATION[segment.request.operation] || "text_to_video",
-        videoStartFrameNodeId: firstFrameNode?.id,
+        videoStartFrameNodeId: segment.request.operation === "image_to_video" ? firstFrameNode?.id : undefined,
         seconds: seconds ? String(seconds) : undefined,
         ...(segment.videoResourceId && segment.videoSeconds ? { durationMs: segment.videoSeconds * 1000 } : {}),
         assetCategory: "material",

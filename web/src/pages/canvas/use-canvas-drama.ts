@@ -88,7 +88,7 @@ function segmentAssetItems(episode: Pick<DramaEpisode, "number">, segment: Drama
     const items: DramaCanvasAssetItem[] = segment.request.references
         .filter((reference) => reference.sent && reference.resourceId)
         .map((reference) => ({ resourceId: reference.resourceId!, title: castTitle(reference), category: dramaCastAssetCategory(reference.kind) }));
-    if (segment.request.firstFrameResourceId) items.push({ resourceId: segment.request.firstFrameResourceId, title: `${label} · 首帧`, category: "material" });
+    if (segment.request.firstFrameResourceId) items.push({ resourceId: segment.request.firstFrameResourceId, title: `${label} · ${segment.request.operation === "reference_to_video" ? "衔接参考" : "首帧"}`, category: "material" });
     for (const resourceId of dramaSegmentResourceIds(segment, takes)) {
         if (!items.some((item) => item.resourceId === resourceId)) items.push({ resourceId, title: `${label} · 视频`, category: "material" });
     }

@@ -27,9 +27,11 @@ export async function createMiniMaxVideoTask(
     const content: Array<Record<string, unknown>> = [{ type: "text", text: prompt.trim() }];
     const imagePlan = resolveVideoImageReferences(references.slice(0, 9), options, { videoCount: videoUrls.length, audioCount: audioUrls.length });
     const frameMode = imagePlan.some(({ role }) => role === "first_frame" || role === "last_frame");
+    if (frameMode && (imagePlan.some(({ role }) => role !== "first_frame" && role !== "last_frame") || videoUrls.length > 0 || audioUrls.length > 0)) {
+        throw new Error("MiniMax H3 首尾帧不能与参考图、参考视频或参考音频混用；请改用普通衔接参考图，或仅保留首尾帧");
+    }
     imageUrls.forEach((url, index) => {
         const role = imagePlan[index]?.role || "reference_image";
-        if (frameMode && role === "reference_image") throw new Error("MiniMax 首尾帧模式不能混合未标记的参考图");
         content.push({ type: "image_url", image_url: { url }, role });
     });
     videoUrls.forEach((url) => content.push({ type: "video_url", video_url: { url }, role: "reference_video" }));

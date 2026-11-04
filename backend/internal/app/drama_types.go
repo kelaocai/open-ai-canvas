@@ -567,7 +567,8 @@ type DramaSegmentRequest struct {
 	PromptMaxChars int `json:"promptMaxChars,omitempty"`
 	// GenerateAudio 表示视频模型同步生成对白与音效；为 false 时本段视频没有声音。
 	GenerateAudio bool `json:"generateAudio"`
-	// FirstFrame 是上一段视频的最后一帧；第一段为空。FirstFramePending 表示上一段还没生成，生成后才能提交本段。
+	// FirstFrame 是上一段视频的最后一帧；第一段为空。reference_to_video 时作为普通衔接参考图。
+	// FirstFramePending 表示上一段还没生成，生成后才能提交本段。
 	FirstFrameResourceID string                  `json:"firstFrameResourceId,omitempty"`
 	FirstFramePending    bool                    `json:"firstFramePending"`
 	References           []DramaSegmentReference `json:"references"`

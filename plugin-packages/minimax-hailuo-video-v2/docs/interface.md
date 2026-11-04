@@ -24,7 +24,7 @@
 | `audios` | media[] | 否 | audio content blocks | 参考音频或声音按 role 与 order 映射。 |
 | `duration` | integer | 是 | `request.duration` | 4-30 秒。 |
 | `resolution` | string | 否 | `request.resolution` | 默认 `768P`；实际枚举按模型 profile。 |
-| `ratio` | string | 否 | `request.aspectRatio` | 只有首尾帧、没有其他参考图时为 `adaptive`；首尾帧混用参考图时用请求比例，未传则为 `adaptive`；其余默认 `16:9`。 |
+| `ratio` | string | 否 | `request.aspectRatio` | 首尾帧模式为 `adaptive`；参考模式使用请求比例；其余默认 `16:9`。 |
 | `aigc_watermark` | boolean | 否 | `request.watermark` | 是否带 AIGC 水印。 |
 | `generate_audio` | boolean | 否 | `request.generateAudio` | 模型支持时生成音频。 |
 | `seed` | integer | 否 | `providerOptions.minimax-video.seed` | 随机种子。 |
@@ -34,7 +34,8 @@
 
 - 图片最多 9 张、视频最多 3 个、音频最多 3 个。
 - 首帧和尾帧各最多 1 张；尾帧不能脱离首帧。
-- 首帧、尾帧可以与 `reference_image/subject_reference/style_reference` 同时提交（H3 按 role 区分，秘塔等中转同样支持）；混用时 `ratio` 使用请求比例，避免上游按横版参考图出片。
+- 首帧、尾帧不能与参考图、参考视频或参考音频混用，提交前直接报错。
+- 短剧串行续接使用多模态参考模式：设定图按原编号发送，上一段尾帧追加在最后并标记 `reference_image`，提示词说明其仅作衔接参考，不保证逐帧复现；任务不设置首帧节点 ID。
 - duration 超出 4-30 秒直接失败，不静默裁剪。
 
 ## 中转兼容边界
@@ -46,8 +47,8 @@
 - `task.id` / `task_id` / `id` 映射为统一任务 ID；查询响应缺省时保留已有任务 ID。
 - `task.status` / `status` 映射为 `pending/processing/succeeded/failed/cancelled`。
 - `task.content.url` / `content.url` / `video_url` / `file.url` 映射为统一视频结果。
-- 创建和查询响应优先读取 `task.error.message`，再读取 `task.message` / `base_resp.status_msg` / `message` / `error.message`；具体失败原因通过任务错误返回给用户。
-- `task.error.code` / `base_resp.status_code` / `error.code` 非成功值均判定为失败，即使响应 HTTP 状态为 200 或未提供任务状态。
+- 创建和查询响应优先读取 `task.error.message`，再读取 `task.message` / `base_resp.status_msg` / `message` / `error.message` / `Message`；具体失败原因通过任务错误返回给用户。
+- `task.error.code` / `base_resp.status_code` / `error.code` / `RetCode` 非成功值均判定为失败，即使响应 HTTP 状态为 200 或未提供任务状态。
 - 完成后的临时媒体地址由宿主立即下载并持久化。
 
 例如，参考图片尺寸不符合要求时，上游返回 `task.error.code: "2013"` 和 `task.error.message: "content[1].image_url: media dimensions must be between 256 and 5760 pixels"`。任务应展示这条具体消息；只有上游未提供可读取的错误原因时，才使用通用失败提示。
@@ -62,7 +63,7 @@
   "apiVersion": "yingce.plugin/v2",
   "id": "minimax-hailuo-video-v2",
   "name": "MiniMax Hailuo Video V2 / H3",
-  "version": "2.0.4",
+  "version": "2.0.6",
   "author": "MiniMax / 影策",
   "description": "MiniMax / Hailuo V2 视频生成协议，保留首帧、尾帧、参考图、视频和音频角色语义。",
   "documentation": "<当前插件的完整 documentation，由 README.md 与 docs/interface.md 拼接而成；为避免 JSON 递归，此处不重复展开正文。>",
@@ -374,6 +375,93 @@
               ]
             },
             "message": "MiniMax H3 使用尾帧时必须同时提供首帧"
+          },
+          {
+            "assert": {
+              "$or": [
+                {
+                  "$eq": [
+                    {
+                      "$len": {
+                        "$filter": {
+                          "from": {
+                            "$ref": "request.images"
+                          },
+                          "as": "image",
+                          "where": {
+                            "$in": [
+                              {
+                                "$ref": "image.role"
+                              },
+                              [
+                                "first_frame",
+                                "last_frame"
+                              ]
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    0
+                  ]
+                },
+                {
+                  "$and": [
+                    {
+                      "$eq": [
+                        {
+                          "$len": {
+                            "$filter": {
+                              "from": {
+                                "$ref": "request.images"
+                              },
+                              "as": "image",
+                              "where": {
+                                "$in": [
+                                  {
+                                    "$ref": "image.role"
+                                  },
+                                  [
+                                    "first_frame",
+                                    "last_frame"
+                                  ]
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$len": {
+                            "$ref": "request.images"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "$eq": [
+                        {
+                          "$len": {
+                            "$ref": "request.videos"
+                          }
+                        },
+                        0
+                      ]
+                    },
+                    {
+                      "$eq": [
+                        {
+                          "$len": {
+                            "$ref": "request.audios"
+                          }
+                        },
+                        0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "message": "MiniMax H3 首尾帧不能与参考图、参考视频或参考音频混用；请改用普通衔接参考图，或仅保留首尾帧"
           }
         ],
         "create": {
@@ -655,6 +743,9 @@
               },
               {
                 "$ref": "response.error.message"
+              },
+              {
+                "$ref": "response.Message"
               }
             ]
           },
@@ -677,7 +768,8 @@
           "errorPaths": [
             "task.error.code",
             "base_resp.status_code",
-            "error.code"
+            "error.code",
+            "RetCode"
           ],
           "resultEphemeral": true
         }

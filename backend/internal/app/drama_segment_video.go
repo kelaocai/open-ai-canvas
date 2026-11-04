@@ -128,8 +128,12 @@ func (s *Service) prepareDramaSegment(settings DramaSettings, draft dramaSegment
 	}
 	refs := []any{}
 	header := []string{}
+	var continuityRef any
 	if previous != nil {
 		request.Operation = "image_to_video"
+		if profile.ContinuityAsReference {
+			request.Operation = "reference_to_video"
+		}
 		request.FirstFramePending = previous.VideoStatus != model.DramaMediaReady || previous.TailFrameResourceID == ""
 		if !request.FirstFramePending {
 			request.FirstFrameResourceID = previous.TailFrameResourceID
@@ -137,9 +141,16 @@ func (s *Service) prepareDramaSegment(settings DramaSettings, draft dramaSegment
 			if err != nil {
 				return request, nil, nil, err
 			}
-			refs = append(refs, ref)
+			if profile.ContinuityAsReference {
+				ref["role"] = "reference_image"
+				continuityRef = ref
+			} else {
+				refs = append(refs, ref)
+			}
 		}
-		header = append(header, "首帧图为上一段视频的最后一帧，不占参考图编号。")
+		if !profile.ContinuityAsReference {
+			header = append(header, "首帧图为上一段视频的最后一帧，不占参考图编号。")
+		}
 	} else if profile.supports("reference_to_video") {
 		request.Operation = "reference_to_video"
 	} else {
@@ -181,6 +192,9 @@ func (s *Service) prepareDramaSegment(settings DramaSettings, draft dramaSegment
 			if err != nil {
 				return request, nil, nil, err
 			}
+			if profile.ContinuityAsReference {
+				ref["role"] = "reference_image"
+			}
 			refs = append(refs, ref)
 			capacity--
 			line := reference.Label + "：" + reference.Name
@@ -203,6 +217,16 @@ func (s *Service) prepareDramaSegment(settings DramaSettings, draft dramaSegment
 		}
 		request.References = append(request.References, reference)
 	}
+	if previous != nil && profile.ContinuityAsReference {
+		if profile.MaxImages < 1 {
+			return request, nil, nil, errors.New("所选模型没有可用的衔接参考图容量")
+		}
+		// 追加在设定图之后，保留正文已有的参考图编号。
+		if continuityRef != nil {
+			refs = append(refs, continuityRef)
+		}
+		header = append(header, "最后一张输入图片是上一段视频的尾帧，仅作衔接参考，不占上述角色、道具与场景参考图编号。请参考其人物位置、动作与光线衔接本段；正文中的首帧描述按衔接意图理解，不要求逐帧复现。")
+	}
 	audios, err := s.dramaSegmentAudioReferences(&request, profile, draft.shots, casts, len(refs) > 0)
 	if err != nil {
 		return request, nil, nil, err
@@ -214,6 +238,9 @@ func (s *Service) prepareDramaSegment(settings DramaSettings, draft dramaSegment
 	}
 	if request.Warning == "" {
 		notes := []string{}
+		if previous != nil && profile.ContinuityAsReference {
+			notes = append(notes, "MiniMax H3 以上一段尾帧作普通衔接参考图，保留角色与场景参考，无法保证逐帧续接")
+		}
 		if len(missing) > 0 {
 			notes = append(notes, "参考图未就绪，本段按文字设定生成："+strings.Join(missing, "、")+"；重新生成参考图后再生成本段，形象更一致")
 		}
@@ -403,7 +430,7 @@ func (r *dramaRun) submitSegmentVideo(job *model.DramaJob) (*model.Task, bool, e
 			}
 		}
 		metadata := r.metadata(job)
-		if previous != nil {
+		if previous != nil && request.Operation == "image_to_video" {
 			metadata["videoStartFrameNodeId"] = "first-frame"
 		}
 		// 画面参数与声音开关取自预演：比例或分辨率标签按模型能力合同换算，不出声的模型显式关闭声音。
