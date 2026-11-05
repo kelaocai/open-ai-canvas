@@ -7,7 +7,7 @@ import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 
 type BrandLogoProps = {
     className?: string;
-    fallback: ReactNode;
+    fallback?: ReactNode;
     alt?: string;
     theme?: ThemeName | "auto";
 };
@@ -17,7 +17,9 @@ export function BrandLogo({ className, fallback, alt = "", theme = "auto" }: Bra
     const currentTheme = useActiveTheme();
     const source = appearanceLogoURL(appearance, theme === "auto" ? currentTheme : theme);
     const [failedSource, setFailedSource] = useState<string | null>(null);
-    if (!appearance.logoConfigured) return <>{fallback}</>;
+    if (!appearance.logoConfigured) {
+        return fallback ?? <span className={cn("block bg-current", className)} style={{ mask: "url(/logo.svg) center / contain no-repeat" }} role={alt ? "img" : undefined} aria-label={alt || undefined} aria-hidden={!alt} />;
+    }
     // A configured custom logo must never fall through to the built-in brand
     // when its file becomes unavailable. Keep its footprint neutral instead.
     if (failedSource === source) return <span className={cn("block", className)} aria-hidden="true" />;

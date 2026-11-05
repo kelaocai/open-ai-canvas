@@ -132,6 +132,8 @@ export function applyAppearanceMetadata(appearance: PublicAppearance, targetDocu
         targetDocument.head.appendChild(favicon);
     }
     favicon.href = appearanceLogoURL(appearance, targetDocument.documentElement.classList.contains("dark") ? "dark" : "light");
+    targetDocument.documentElement.style.setProperty("--bootstrap-brand-logo", `url(${JSON.stringify(favicon.href)})`);
+    targetDocument.documentElement.classList.add("has-bootstrap-brand");
 
     const location = targetDocument.defaultView?.location;
     if (location && (location.protocol === "http:" || location.protocol === "https:")) {

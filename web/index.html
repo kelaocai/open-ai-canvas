@@ -38,6 +38,14 @@
                 box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.08);
                 animation: appearance-bootstrap-pulse 1.8s ease-in-out infinite;
             }
+            .has-bootstrap-brand #root:empty::before {
+                width: 52px;
+                height: 52px;
+                margin: -26px 0 0 -26px;
+                background: var(--bootstrap-brand-logo) center / contain no-repeat;
+                border-radius: 0;
+                box-shadow: none;
+            }
             #root:empty::after {
                 content: "";
                 position: fixed;
@@ -51,8 +59,22 @@
                 border-radius: 999px;
                 animation: appearance-bootstrap-orbit 2.8s linear infinite;
             }
-            @keyframes appearance-bootstrap-pulse { 0%, 100% { opacity: .62; transform: scale(.82); } 50% { opacity: 1; transform: scale(1.08); } }
-            @keyframes appearance-bootstrap-orbit { to { transform: rotate(360deg); } }
+            @keyframes appearance-bootstrap-pulse {
+                0%,
+                100% {
+                    opacity: 0.62;
+                    transform: scale(0.82);
+                }
+                50% {
+                    opacity: 1;
+                    transform: scale(1.08);
+                }
+            }
+            @keyframes appearance-bootstrap-orbit {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
             @media (prefers-reduced-motion: reduce) {
                 #root:empty::before,
                 #root:empty::after {
