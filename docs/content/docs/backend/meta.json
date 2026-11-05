@@ -10,6 +10,8 @@
     "backend-database",
     "ecommerce-agent",
     "video-token-billing",
+    "channel-pricing",
+    "admin-mcp",
     "credit-rewards",
     "task-runtime-stability",
     "newapi-channel-2",

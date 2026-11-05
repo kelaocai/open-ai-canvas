@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"yingce/backend/internal/service"
 
@@ -20,6 +21,24 @@ func RegisterCanvasAPI(api *gin.RouterGroup, svc *service.Service) {
 	RegisterAgentMemoryRoutes(api, svc)
 	RegisterResponseInterceptionRoutes(api, svc)
 	RegisterAdminRoutes(api, svc)
+	api.POST("/admin/automation", func(c *gin.Context) {
+		var req service.AdminAutomationRequest
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 128<<10)
+		if err := c.ShouldBindJSON(&req); err != nil {
+			fail(c, http.StatusBadRequest, err)
+			return
+		}
+		token, okBearer := strings.CutPrefix(c.GetHeader("Authorization"), "Bearer ")
+		if !okBearer {
+			token = ""
+		}
+		result, err := svc.AdminAutomation(token, req)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, result)
+	})
 	RegisterAgentLessonAdminRoutes(api, svc)
 	RegisterAdminAnalyticsRoutes(api, svc)
 	RegisterAdminStorageRoutes(api, svc)

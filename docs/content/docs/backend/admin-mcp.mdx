@@ -1,0 +1,34 @@
+---
+title: 用 Agent 管理各渠道价格
+description: 通过 MCP 查看、预览、应用和核验渠道价格。
+---
+
+RightMovie Admin MCP 支持后台全部系统渠道，包括后来新增的渠道。每次批量更新限于同一渠道的 1 至 100 个已启用价格档。修改前先列出渠道 ID，再读取模型和规格版本。同名模型在不同渠道可以分别定价。
+
+## 接入
+
+在仓库根目录运行以下命令，将管理员 ID 替换成实际值。凭证默认只读，传入 `--write` 可调价。`--channel '*'` 授权全部系统渠道，也可以重复传入具体渠道 ID。
+
+```sh
+uv venv --python 3.12 .local/mcp-venv
+uv pip install --python .local/mcp-venv/bin/python -r tools/admin-mcp/requirements.txt
+python3 tools/admin-mcp/create_grant.py .local/rightmovie/admin-mcp \
+  --actor '<管理员 ID>' --name local-codex --channel '*' --write
+```
+
+将生成的 `grants` 子目录以只读方式挂载到后端容器的 `/run/rightmovie-admin`，设置环境变量 `RIGHTMOVIE_ADMIN_GRANTS=/run/rightmovie-admin/grants.json`。容器运行用户需要读取该目录。原始 token 仅供宿主机 MCP 客户端使用。后端逐次读取授权清单并验证管理员状态，移除清单中的条目可立即撤销后续请求。
+
+```sh
+codex mcp add rightmovie-admin \
+  --env RIGHTMOVIE_TOKEN_FILE="$PWD/.local/rightmovie/admin-mcp/token" \
+  --env RIGHTMOVIE_API=http://localhost/rightmovie/api \
+  -- "$PWD/.local/mcp-venv/bin/python" "$PWD/tools/admin-mcp/server.py"
+```
+
+## 调价流程
+
+1. 调用 `list_channels` 和 `list_price_tiers`，选定渠道、模型和价格档。
+2. 用 `set_channel_margin` 的默认 `preview` 模式传入成本积分、毛利率、变更原因和读取到的两个版本号。按次或按秒计价传 `unit`。文本 Token 传每百万 Token 的 `input/output/cached/cacheWrite`，视频 Token 传 `output`。1 元成本填 100 积分。
+3. 按「成本积分 ÷（1 − 毛利率）」向上取整到整积分，再用管理员分组汇率换算为模型售价币种。例如成本 35 积分、目标毛利 25%，基准售价为 47 积分。用户分组折扣和上游真实成本会影响最终毛利。
+4. 核对变更明细，再传入相同参数和 `mode=apply`。版本冲突时重新读取并预览。价格、成本及审计在同一事务中提交。
+5. 用 `quote_model` 按实际生成参数检查当前管理员分组的报价，用 `list_price_audit` 查看最近 50 条 MCP 调价记录。
