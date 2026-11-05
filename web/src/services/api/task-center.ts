@@ -1,5 +1,6 @@
 import { generationErrorMessage } from "@/lib/generation-error";
 import { http, apiBaseURL, type BackendEnvelope } from "@/services/api/request";
+import { resolveResourceAccessURL } from "@/services/api/resources";
 import { consumeTaskTextStream, createTaskTextStreamParser, type TaskTextStreamEvent } from "@/services/api/task-text-stream";
 import { recordDiagnosticEvent } from "@/services/diagnostics/client-diagnostics";
 import { getActiveUserScope } from "@/lib/user-scope";
@@ -196,7 +197,16 @@ export async function listGenerationTasks(limit = 30, options?: { projectId?: st
         .filter((task) => !options?.projectId || task.projectId === options.projectId)
         .filter((task) => !options?.activeOnly || task.status === "queued" || task.status === "running")
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id))
-        .slice(0, boundedLimit);
+        .slice(0, boundedLimit)
+        .map(resolveTaskPreviewURLs);
+}
+
+function resolveTaskPreviewURLs(task: GenerationTask): GenerationTask {
+    return {
+        ...task,
+        previewUrl: task.previewUrl && resolveResourceAccessURL(task.previewUrl),
+        previewPosterUrl: task.previewPosterUrl && resolveResourceAccessURL(task.previewPosterUrl),
+    };
 }
 
 async function collectGenerationTaskPages<T>(readPage: (request: GenerationTaskPageRequest, signal?: AbortSignal) => Promise<GenerationTaskPage<T>>, baseRequest: GenerationTaskPageRequest, limit: number, signal?: AbortSignal) {
@@ -216,7 +226,7 @@ async function collectGenerationTaskPages<T>(readPage: (request: GenerationTaskP
 }
 
 export function queryGenerationTask(id: string, options?: { signal?: AbortSignal }) {
-    return http.get<GenerationTask>(`/tasks/${encodeURIComponent(id)}`, { signal: options?.signal });
+    return http.get<GenerationTask>(`/tasks/${encodeURIComponent(id)}`, { signal: options?.signal }).then(resolveTaskPreviewURLs);
 }
 
 type GenerationTaskSubscriptionDependencies = {

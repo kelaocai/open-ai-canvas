@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { appURL } from "@/lib/app-path";
 import { DEFAULT_CANVAS_APPEARANCE } from "@/lib/canvas/agent-appearance";
 import { DEFAULT_UPDATE_ANNOUNCEMENT, normalizeUpdateAnnouncement } from "@/lib/update-announcement";
 
@@ -180,7 +181,7 @@ function normalizeBrandSlug(value: unknown) {
 function safeAppearanceURL(value: unknown, fallback: string) {
     const candidate = String(value || "").trim();
     if (!candidate) return fallback;
-    if (candidate.startsWith("/") && !candidate.startsWith("//")) return candidate;
+    if (candidate.startsWith("/") && !candidate.startsWith("//")) return appURL(candidate);
     try {
         const parsed = new URL(candidate);
         if (parsed.protocol === "https:") return parsed.toString();

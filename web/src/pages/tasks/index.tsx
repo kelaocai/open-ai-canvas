@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { currentLocale, translate } from "@/i18n";
 
 import { MediaPreview } from "@/components/media-preview";
+import { resolveResourceAccessURL } from "@/services/api/resources";
 import { PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceState } from "@/components/layout/workspace-state";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
@@ -604,7 +605,11 @@ function resultMediaUrls(value?: string) {
             const isInlineMedia = /^(data:image\/|data:video\/)/.test(item);
             const isMediaPath = /\.(png|jpe?g|webp|gif|avif|mp4|webm|mov)(?:$|\?)/i.test(item);
             const isNamedMediaUrl = /^(https?:|blob:)/.test(item) && /(url|image|video|result|output|media)/i.test(key);
-            if ((isInlineMedia || isMediaPath || isNamedMediaUrl) && !urls.includes(item)) urls.push(item);
+            const isResourceFile = /^\/api\/resources\/[^/?#]+\/file(?:[?#]|$)/.test(item);
+            if (isInlineMedia || isMediaPath || isNamedMediaUrl || isResourceFile) {
+                const url = resolveResourceAccessURL(item);
+                if (!urls.includes(url)) urls.push(url);
+            }
             return;
         }
         if (Array.isArray(item)) return item.forEach((value) => visit(value, key));

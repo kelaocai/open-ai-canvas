@@ -3,11 +3,12 @@ import "@fontsource-variable/jetbrains-mono";
 import { installChunkRecovery } from "@/lib/chunk-recovery";
 import { bootstrapAppearance } from "@/services/appearance-bootstrap";
 import { isIsolatedPrevisRepro } from "@/lib/dev-repro";
+import { routerPath } from "@/lib/app-path";
 
 installChunkRecovery();
 
 // The public film entry checks its availability independently of workspace bootstrap.
-if (/^\/welcome\/?$/.test(window.location.pathname)) {
+if (/^\/welcome\/?$/.test(routerPath(window.location.pathname))) {
     void bootstrapAppearance().catch(() => undefined);
     void import("./welcome-application");
 } else {

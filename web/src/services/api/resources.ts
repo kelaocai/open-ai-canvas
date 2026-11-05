@@ -564,7 +564,7 @@ export async function getResourceInputURL(storageKey?: string) {
 export function resolveResourceAccessURL(url: string) {
     if (!url || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(url)) return url;
     const base = String(apiBaseURL).trim();
-    if (!/^https?:\/\//i.test(base)) return url;
+    if (!/^https?:\/\//i.test(base)) return url.startsWith("/api/") ? base.replace(/\/+$/, "") + url.slice(4) : url;
     return new URL(url, `${base.replace(/\/+$/, "")}/`).toString();
 }
 

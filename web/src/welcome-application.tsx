@@ -4,12 +4,13 @@ import { createRoot } from "react-dom/client";
 import { getWelcomeAvailability } from "@/services/api/welcome";
 import WelcomePage from "@/pages/welcome";
 import { translate } from "@/i18n";
+import { appURL } from "@/lib/app-path";
 
 async function renderWelcome() {
     try {
         const { welcomeEnabled } = await getWelcomeAvailability();
         if (welcomeEnabled !== true) {
-            window.location.replace("/");
+            window.location.replace(appURL("/"));
             return;
         }
         createRoot(document.getElementById("root")!).render(<StrictMode><WelcomePage /></StrictMode>);
@@ -19,7 +20,7 @@ async function renderWelcome() {
             <main role="alert">
                 <p>{translate("account.welcome.openFailed")}</p>
                 <button onClick={() => window.location.reload()}>{translate("common.retry")}</button>
-                <a href="/">{translate("auth.backHome")}</a>
+                <a href={appURL("/")}>{translate("auth.backHome")}</a>
             </main>,
         );
     }

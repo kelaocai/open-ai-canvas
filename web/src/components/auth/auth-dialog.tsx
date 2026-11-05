@@ -7,6 +7,7 @@ import { useAuthDialogStore } from "@/stores/use-auth-dialog-store";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { AuthPanel } from "./auth-panel";
+import { routerPath } from "@/lib/app-path";
 import "./auth-dialog.css";
 
 const STAGE_FEATURES: Array<{ key: "drama" | "ecommerce" | "canvas" | "agent"; icon: LucideIcon }> = [
@@ -17,7 +18,7 @@ const STAGE_FEATURES: Array<{ key: "drama" | "ecommerce" | "canvas" | "agent"; i
 ];
 
 function currentPath() {
-    return window.location.pathname + window.location.search;
+    return routerPath(window.location.pathname) + window.location.search;
 }
 
 /**

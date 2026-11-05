@@ -3,6 +3,7 @@ import { useEffect } from "react";
 
 import { getAuthSession, type AuthSessionPayload } from "@/services/api/auth";
 import { FullScreenLoader } from "@/components/ui/aceternity/full-screen-loader";
+import { routerPath } from "@/lib/app-path";
 import { preloadWorkspaceRoute } from "@/lib/workspace-route-modules";
 import { useUserStore } from "@/stores/use-user-store";
 import { recordDiagnosticEvent } from "@/services/diagnostics/client-diagnostics";
@@ -46,7 +47,7 @@ export function AuthSessionHydrator({ children }: { children: ReactNode }) {
                     message: "登录工作区已解除启动阻塞",
                     durationMs: performance.now() - startedAt,
                 });
-                preloadWorkspaceRoute(window.location.pathname);
+                preloadWorkspaceRoute(routerPath(window.location.pathname));
             })
             .catch(async () => {
                 if (!cancelled) {

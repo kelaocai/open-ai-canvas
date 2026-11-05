@@ -14,7 +14,7 @@ export function CanvasShareModal({ projectId, open, onClose, beforeCreate }: { p
     const [expiresDays, setExpiresDays] = useState(0);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const shareUrl = useMemo(() => share.token ? `${window.location.origin}/share/canvas/${share.token}` : "", [share.token]);
+    const shareUrl = useMemo(() => share.token ? `${window.location.origin}${import.meta.env.BASE_URL}share/canvas/${share.token}` : "", [share.token]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -45,7 +45,7 @@ export function CanvasShareModal({ projectId, open, onClose, beforeCreate }: { p
             if (saved === false) return;
             const result = await createCanvasShare(projectId, { expiresDays, rotate });
             setShare(result.share);
-            const url = result.share.token ? `${window.location.origin}/share/canvas/${result.share.token}` : "";
+            const url = result.share.token ? `${window.location.origin}${import.meta.env.BASE_URL}share/canvas/${result.share.token}` : "";
             await copy(url);
         } catch (error) {
             message.error(error instanceof Error ? error.message : "创建分享链接失败");

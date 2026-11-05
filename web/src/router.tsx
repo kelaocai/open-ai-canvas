@@ -280,4 +280,4 @@ export const router = createBrowserRouter([
         ],
     },
     { path: "*", element: fullScreenDeferred(<NotFound />) },
-]);
+], { basename: import.meta.env.BASE_URL });
