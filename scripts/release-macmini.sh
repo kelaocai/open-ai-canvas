@@ -9,7 +9,12 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 bun_bin="${BUN_BIN:-bun}"
 export PATH="$(dirname "$(command -v "$bun_bin")"):$PATH"
-"$bun_bin" scripts/verify-before-push.mjs --jobs 3
+deployed=$(ssh "$target" "cat '$remote/deployed-sha' 2>/dev/null || true")
+checks=(--all)
+if [[ "$deployed" =~ ^[0-9a-f]{40}$ ]] && git cat-file -e "$deployed^{commit}" 2>/dev/null; then
+    checks=(--base "$deployed")
+fi
+"$bun_bin" scripts/verify-before-push.mjs --jobs 3 "${checks[@]}"
 sha=$(git rev-parse HEAD)
 backend="rightmovie-backend:sha-$sha"
 web="rightmovie-web:sha-$sha"
