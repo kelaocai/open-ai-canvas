@@ -2455,7 +2455,14 @@ func TestNewAPIChannel1VideoBodyMapsFramesAndReferences(t *testing.T) {
 		ReferenceAudios: []providerMedia{{ID: "voice", URL: server.URL + "/voice.mp3"}},
 		Metadata:        map[string]interface{}{"videoStartFrameNodeId": "first", "videoEndFrameNodeId": "last"},
 	})
-	input := body["input"].(map[string]any)
+	metadata, ok := body["metadata"].(map[string]any)
+	if !ok || body["input"] != nil || body["parameters"] != nil {
+		t.Fatalf("expected native task fields under metadata: %#v", body)
+	}
+	input, _ := metadata["input"].(map[string]any)
+	if input["prompt"] != "make it move" {
+		t.Fatalf("metadata.input.prompt = %#v", input["prompt"])
+	}
 	media, _ := input["media"].([]any)
 	wantTypes := []string{"first_frame", "last_frame", "reference_image", "reference_video", "reference_audio"}
 	if len(media) != len(wantTypes) {
@@ -2467,7 +2474,7 @@ func TestNewAPIChannel1VideoBodyMapsFramesAndReferences(t *testing.T) {
 			t.Fatalf("media[%d].type = %q, want %q", index, item["type"], want)
 		}
 	}
-	parameters := body["parameters"].(map[string]any)
+	parameters, _ := metadata["parameters"].(map[string]any)
 	if parameters["resolution"] != "1080P" || parameters["ratio"] != "9:16" || parameters["duration"] != float64(15) || parameters["watermark"] != true {
 		t.Fatalf("parameters = %#v", parameters)
 	}
@@ -2569,7 +2576,8 @@ func TestNewAPIChannel1VideoPluginKeepsInlineDataURL(t *testing.T) {
 		Config:          providerConfig{Model: "seedance-2.0", InterfaceType: "newapi-channel-1"},
 		ReferenceImages: []providerMedia{{ID: "image", DataURL: testReferenceImageDataURL}},
 	})
-	input := body["input"].(map[string]any)
+	metadata, _ := body["metadata"].(map[string]any)
+	input, _ := metadata["input"].(map[string]any)
 	media, _ := input["media"].([]any)
 	if len(media) != 1 {
 		t.Fatalf("media = %#v", media)
