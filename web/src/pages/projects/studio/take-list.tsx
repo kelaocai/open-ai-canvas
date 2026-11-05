@@ -32,7 +32,7 @@ export function DramaTakeList({ projectId, ownerId, kind, limit = 6 }: { project
                     <li key={take.id} className={take.current ? "is-current" : undefined}>
                         {kind === "cast" ? (
                             <span className="drama-take-thumb">
-                                <MediaThumb resourceId={take.resourceId} alt={`V${take.version}`} />
+                                <MediaThumb resourceId={take.resourceId} alt={`参考图 · V${take.version}`} />
                             </span>
                         ) : null}
                         <b>V{take.version}</b>

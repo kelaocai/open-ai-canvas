@@ -98,7 +98,7 @@ export function CastLooks({ projectId, character, looks, restyle, onChanged }: {
                     ) : (
                         <div key={look.id} className="drama-look">
                             <span className="drama-look-thumb">
-                                {look.imageResourceId ? <MediaThumb resourceId={look.imageResourceId} alt={look.lookName || "造型"} /> : <Shirt className="size-4 opacity-40" />}
+                                {look.imageResourceId ? <MediaThumb resourceId={look.imageResourceId} alt={`${character.name} · ${look.lookName || "造型"}`} /> : <Shirt className="size-4 opacity-40" />}
                                 {mediaBusy(look.imageStatus) ? <span className="drama-look-busy" aria-label="参考图生成中" /> : null}
                                 {look.imageStatus === "failed" ? <AlertCircle className="size-3.5 text-[var(--status-error)]" aria-label="参考图生成失败" /> : null}
                             </span>

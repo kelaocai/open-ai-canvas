@@ -53,21 +53,21 @@ export function FinalView({
                 </div>
                 <div className="drama-filmstrip thin-scrollbar">
                     {segments.map((segment, position) => (
-                        <button
-                            key={segment.id || segment.index}
-                            type="button"
-                            className="drama-filmstrip-item"
-                            title={segment.title}
-                            onClick={() => {
-                                if (videoRef.current) videoRef.current.currentTime = starts[position];
-                                onOpenSegment(segment.index);
-                            }}
-                        >
-                            <MediaThumb resourceId={segment.tailFrameResourceId} alt={segment.title} fallback={<span className="drama-filmstrip-empty" />} />
-                            <span>
+                        <div key={segment.id || segment.index} className="drama-filmstrip-item">
+                            <div className="relative">
+                                <MediaThumb resourceId={segment.tailFrameResourceId} alt={segment.title} fallback={<span className="drama-filmstrip-empty" />} />
+                            </div>
+                            <button
+                                type="button"
+                                title={segment.title}
+                                onClick={() => {
+                                    if (videoRef.current) videoRef.current.currentTime = starts[position];
+                                    onOpenSegment(segment.index);
+                                }}
+                            >
                                 第 {segment.index + 1} 段 · {secondsLabel(segment.durationMs)}
-                            </span>
-                        </button>
+                            </button>
+                        </div>
                     ))}
                 </div>
             </div>

@@ -131,7 +131,16 @@ export function SegmentInputs({ segment, castById, compact = false, frameOnly = 
                             {cast?.imageResourceId ? <MediaThumb resourceId={cast.imageResourceId} alt={ref.name} /> : <span className="drama-sg-thumb-empty">{CAST_KIND_LABEL[ref.kind]}</span>}
                             <em>{ref.label.replace("参考图", "图")}</em>
                         </span>
-                        {compact ? null : (
+                        {onOpenCast ? (
+                            <button type="button" className={compact ? "drama-sg-compact-name" : "drama-sg-input-text"} onClick={() => onOpenCast(ref.castId)} title={`查看${ref.name}设定`}>
+                                <b>{ref.name}</b>
+                                {compact ? null : (
+                                    <small>
+                                        {CAST_KIND_LABEL[ref.kind]} · {ref.sent ? "随请求发送" : `未附图：${reason}`}
+                                    </small>
+                                )}
+                            </button>
+                        ) : compact ? null : (
                             <span className="drama-sg-input-text">
                                 <b>{ref.name}</b>
                                 <small>
@@ -143,13 +152,7 @@ export function SegmentInputs({ segment, castById, compact = false, frameOnly = 
                 );
                 return (
                     <Tooltip key={ref.castId} title={`${ref.label} · ${CAST_KIND_LABEL[ref.kind]} · ${ref.name}${ref.sent ? "" : `（未附图：${reason}）`}`} mouseEnterDelay={0.3}>
-                        {onOpenCast ? (
-                            <button type="button" className={`drama-sg-input ${ref.sent ? "" : "is-missing"}`} onClick={() => onOpenCast(ref.castId)}>
-                                {body}
-                            </button>
-                        ) : (
-                            <span className={`drama-sg-input ${ref.sent ? "" : "is-missing"}`}>{body}</span>
-                        )}
+                        <span className={`drama-sg-input ${ref.sent ? "" : "is-missing"}`}>{body}</span>
                     </Tooltip>
                 );
             })}

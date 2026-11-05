@@ -103,7 +103,7 @@ const SegmentCard = memo(function SegmentCard({ segment, segmentShots, aspectRat
             className={`drama-sg is-${state.tone} ${isSelected ? "is-selected" : ""} ${focused ? "is-focused" : ""}`}
             onClick={(event) => act().handleCardClick(event, segment.index)}
             onDoubleClick={(event) => {
-                if (!(event.target as HTMLElement).closest("button, .ant-select")) act().onOpen(segment.index);
+                if (event.currentTarget.contains(event.target as Node) && !(event.target as HTMLElement).closest("button, .ant-select")) act().onOpen(segment.index);
             }}
         >
             <header className="drama-sg-head">
@@ -134,9 +134,9 @@ const SegmentCard = memo(function SegmentCard({ segment, segmentShots, aspectRat
                 ) : null}
             </header>
             <div className="drama-sg-body">
-                <button type="button" className="drama-sg-cover" style={{ aspectRatio: aspectRatioValue(aspectRatio) }} onClick={() => act().onOpen(segment.index)} aria-label={`打开第 ${segment.index + 1} 段`}>
+                <div className="drama-sg-cover" style={{ aspectRatio: aspectRatioValue(aspectRatio) }}>
                     {segment.tailFrameResourceId && segment.videoResourceId ? (
-                        <MediaThumb resourceId={segment.tailFrameResourceId} alt="" />
+                        <MediaThumb resourceId={segment.tailFrameResourceId} alt={`第 ${segment.index + 1} 段尾帧`} />
                     ) : segment.videoResourceId && hasVideo(segment) ? (
                         <CoverVideo resourceId={segment.videoResourceId} />
                     ) : (
@@ -145,12 +145,10 @@ const SegmentCard = memo(function SegmentCard({ segment, segmentShots, aspectRat
                         </span>
                     )}
                     <span className="drama-sg-cover-dur">{secondsLabel(segment.durationMs)}</span>
-                    {segment.videoResourceId ? (
-                        <span className="drama-sg-cover-play">
-                            <Play className="size-3" aria-hidden />
-                        </span>
-                    ) : null}
-                </button>
+                    <button type="button" className={segment.tailFrameResourceId && segment.videoResourceId ? "drama-sg-cover-play" : "absolute inset-0"} onClick={() => act().onOpen(segment.index)} aria-label={`打开第 ${segment.index + 1} 段`}>
+                        {segment.videoResourceId ? <Play className="size-3" aria-hidden /> : null}
+                    </button>
+                </div>
                 <div className="drama-sg-main">
                     <div className="drama-sg-meta">
                         <SegmentStatus segment={segment} />
@@ -285,7 +283,7 @@ export function Storyboard({ shots, segments, aspectRatio, castById, defaultVide
         setFocused(index);
     };
     const handleCardClick = (event: MouseEvent, index: number) => {
-        if ((event.target as HTMLElement).closest("button, a, input, .ant-select, .ant-checkbox-wrapper")) return;
+        if (!event.currentTarget.contains(event.target as Node) || (event.target as HTMLElement).closest("button, a, input, .ant-select, .ant-checkbox-wrapper")) return;
         if (event.shiftKey && anchor !== undefined) {
             selectRange(anchor, index, event.metaKey || event.ctrlKey);
             setFocused(index);

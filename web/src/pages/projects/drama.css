@@ -1449,6 +1449,7 @@
 }
 
 .drama-avatar {
+    position: relative;
     width: 24px;
     height: 24px;
     border-radius: 999px;
@@ -1688,6 +1689,7 @@
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
 .drama-cast-card {
+    position: relative;
     border-radius: var(--radius-lg);
     overflow: hidden;
     background: var(--drama-panel);
@@ -1746,7 +1748,14 @@
     justify-content: center;
 }
 .drama-cast-card-body {
+    width: 100%;
+    text-align: start;
     padding: 8px 8px 8px;
+}
+.drama-card-action::after {
+    content: "";
+    position: absolute;
+    inset: 0;
 }
 .drama-cast-card-body strong {
     display: block;
@@ -1777,6 +1786,7 @@
     border: 1px solid var(--drama-line);
 }
 .drama-cast-hero-zoom {
+    z-index: 1;
     position: absolute;
     inset: 0;
     display: flex;
@@ -1970,8 +1980,8 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    width: 64px;
+    height: 48px;
     overflow: hidden;
     border-radius: var(--radius-md);
     background: var(--drama-sunken);
@@ -1979,7 +1989,19 @@
 .drama-look-thumb img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+}
+:is(.drama-look-thumb, .drama-take-thumb, .drama-sg-thumb, .drama-sdx-asset-thumb, .drama-avatar, .drama-sdx-prefix-thumb) .drama-cast-hero-zoom {
+    padding: 2px;
+}
+:is(.drama-look-thumb, .drama-take-thumb, .drama-sg-thumb, .drama-sdx-asset-thumb, .drama-avatar, .drama-sdx-prefix-thumb) .drama-cast-hero-zoom-hint {
+    width: 16px;
+    height: 16px;
+}
+:is(.drama-take-thumb, .drama-look-thumb) .drama-cast-hero-zoom-hint {
+    width: 18px;
+    height: 18px;
+    opacity: 1;
 }
 .drama-look-busy {
     position: absolute;
@@ -2168,6 +2190,7 @@
     font-weight: 600;
 }
 .drama-take-thumb {
+    position: relative;
     display: grid;
     flex: none;
     width: 40px;
@@ -3566,6 +3589,7 @@
     gap: 8px;
 }
 .drama-jobd-thumb {
+    position: relative;
     width: 120px;
     overflow: hidden;
     border-radius: 8px;
@@ -5139,6 +5163,7 @@
     font-variant-numeric: tabular-nums;
 }
 .drama-sg-cover-play {
+    z-index: 2;
     position: absolute;
     left: 4px;
     bottom: 4px;
@@ -6188,18 +6213,6 @@ button.drama-sdx-asset-text:focus-visible {
     background: var(--drama-sunken);
     color: var(--foreground);
 }
-.drama-sdx-preview {
-    display: block;
-    width: 320px;
-    max-width: 100%;
-    overflow: hidden;
-    border-radius: var(--radius-md);
-}
-.drama-sdx-preview img {
-    display: block;
-    width: 100%;
-    height: auto;
-}
 .drama-sdx-assets-foot {
     display: flex;
     flex-wrap: wrap;
@@ -6437,6 +6450,7 @@ button.drama-sdx-asset-text:focus-visible {
     opacity: 0.6;
 }
 .drama-sdx-prefix-thumb {
+    position: relative;
     display: block;
     width: 20px;
     height: 20px;

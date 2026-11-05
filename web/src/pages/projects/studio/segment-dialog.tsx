@@ -491,13 +491,7 @@ function AssetChip({
     onOpen: () => void;
     onRaise?: () => void;
 }) {
-    const preview = cast?.imageResourceId ? (
-        <span className="drama-sdx-preview">
-            <MediaThumb resourceId={cast.imageResourceId} alt={name} />
-        </span>
-    ) : (
-        `${kindLabel} · ${name}：暂无参考图`
-    );
+    const preview = cast?.imageResourceId ? `点击放大查看：${name}` : `${kindLabel} · ${name}：暂无参考图`;
     return (
         <div className={`drama-sdx-asset ${checked ? "is-checked" : ""} ${missing ? "is-missing" : ""}`}>
             <input type="checkbox" className="drama-sdx-asset-check" checked={checked} disabled={disabled} aria-label={checked ? `不再把${name}作为本段参考图` : `把${name}作为本段参考图`} onChange={onToggle} />
@@ -796,7 +790,7 @@ function SegmentPrompt({ segment, castById, writing, onSave, onWrite }: { segmen
                                     className={`drama-sdx-prefix-ref ${ref.sent ? "" : "is-missing"} ${usage.used.has(index + 1) ? "" : "is-unused"}`}
                                     title={ref.sent ? `${ref.label}：${ref.name}` : `${ref.label}（${ref.name}）未附图：${referenceMissingReason(segment, castById.get(ref.castId))}`}
                                 >
-                                    <span className="drama-sdx-prefix-thumb">{resourceId ? <MediaThumb resourceId={resourceId} alt="" /> : null}</span>
+                                    <span className="drama-sdx-prefix-thumb">{resourceId ? <MediaThumb resourceId={resourceId} alt={`${ref.label} · ${ref.name}`} /> : null}</span>
                                     <b>{ref.label}</b>
                                     {ref.name}
                                 </span>

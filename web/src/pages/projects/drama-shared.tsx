@@ -1,7 +1,8 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { InputNumber } from "antd";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Maximize2 } from "lucide-react";
 
+import { CanvasImagePreview } from "@/components/canvas/canvas-image-preview";
 import { CachedResourceImage } from "@/components/cached-resource-image";
 import { getResourceAccess, resolveResourceAccessURL, resourceFileUrl, type ResourceAccessVariant } from "@/services/api/resources";
 import type { DramaEpisodeRow, DramaEpisodeStage, DramaMediaMode, DramaMediaStatus, DramaSourceFormat, DramaVideoContinuity } from "@/services/api/drama";
@@ -191,7 +192,8 @@ const THUMB_RETRY_DELAYS_MS = [1500, 5000];
  * 资源缩略图。加载失败会自动重试两次，之后显示 failed（缺省为 fallback）；
  * loading 是加载中的占位（缺省为 fallback）。
  */
-export function MediaThumb({ resourceId, alt, className, fallback, loading, failed }: { resourceId?: string; alt: string; className?: string; fallback?: ReactNode; loading?: ReactNode; failed?: ReactNode }) {
+export function MediaThumb({ resourceId, alt, className, fallback, loading, failed, previewable = true }: { resourceId?: string; alt: string; className?: string; fallback?: ReactNode; loading?: ReactNode; failed?: ReactNode; previewable?: boolean }) {
+    const [previewing, setPreviewing] = useState(false);
     const [retry, setRetry] = useState({ resourceId, attempt: 0 });
     const attempt = retry.resourceId === resourceId ? retry.attempt : 0;
     if (!resourceId) return <>{fallback ?? null}</>;
@@ -205,7 +207,20 @@ export function MediaThumb({ resourceId, alt, className, fallback, loading, fail
                 {pending}
             </ThumbRetry>
         );
-    return <CachedResourceImage key={`${resourceId}:${attempt}`} storageKey={`resource:${resourceId}`} alt={alt} className={className} variant="thumbnail" fallback={failure} loadingFallback={pending} draggable={false} />;
+    const thumbnail = <CachedResourceImage key={`${resourceId}:${attempt}`} storageKey={`resource:${resourceId}`} alt={alt} className={className} variant="thumbnail" fallback={failure} loadingFallback={pending} draggable={false} />;
+    if (!previewable) return thumbnail;
+    const label = alt || "参考图";
+    return (
+        <>
+            {thumbnail}
+            <button type="button" className="drama-cast-hero-zoom" aria-label={`放大查看：${label}`} title="点击查看大图" onClick={() => setPreviewing(true)}>
+                <span className="drama-cast-hero-zoom-hint" aria-hidden>
+                    <Maximize2 className="size-3" />
+                </span>
+            </button>
+            {previewing ? <CanvasImagePreview storageKey={`resource:${resourceId}`} alt={label} onClose={() => setPreviewing(false)} /> : null}
+        </>
+    );
 }
 
 function ThumbRetry({ delayMs, onRetry, children }: { delayMs: number; onRetry: () => void; children: ReactNode }) {

@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { App, Button, Checkbox, Input, InputNumber, Select, Switch } from "antd";
-import { AlertCircle, ArrowRight, Brush, CheckCheck, Clapperboard, Film, FolderOpen, Gem, Inbox, Lock, MapPinned, Maximize2, PauseCircle, RefreshCw, RotateCcw, ScrollText, Upload, UserRound, UsersRound, Cpu, PackageCheck, Play } from "lucide-react";
+import { AlertCircle, ArrowRight, Brush, CheckCheck, Clapperboard, Film, FolderOpen, Gem, Inbox, Lock, MapPinned, PauseCircle, RefreshCw, RotateCcw, ScrollText, Upload, UserRound, UsersRound, Cpu, PackageCheck, Play } from "lucide-react";
 
-import { CanvasImagePreview } from "@/components/canvas/canvas-image-preview";
 import { dramaChoiceKey, dramaVideoRatioIssue } from "@/lib/drama/model-choice";
 import { dramaKeys } from "@/lib/drama/drama-query-keys";
 import {
@@ -163,7 +162,7 @@ export function CastPanel({
                     ) : null}
                     <div className={`drama-cast-grid ${kindRatio.orientation}`}>
                         {list.map((item) => (
-                            <button key={item.id} type="button" className="drama-cast-card" aria-current={item.id === active?.id} onClick={() => onFocus(item.id)}>
+                            <div key={item.id} className="drama-cast-card" aria-current={item.id === active?.id}>
                                 <div className="drama-cast-card-media" style={kindRatio.style}>
                                     {item.imageResourceId ? <MediaThumb resourceId={item.imageResourceId} alt={item.name} loading={castImageLoading} failed={castImageFailed} /> : null}
                                     {!item.imageResourceId || mediaBusy(item.imageStatus) || item.imageStatus === "failed" || item.imageStatus === "" ? (
@@ -188,11 +187,11 @@ export function CastPanel({
                                         </span>
                                     ) : null}
                                 </div>
-                                <div className="drama-cast-card-body">
+                                <button type="button" className="drama-cast-card-body drama-card-action" onClick={() => onFocus(item.id)}>
                                     <strong>{item.name}</strong>
                                     <span>{item.role || parseList(item.aliasesJson).join("、") || item.description || "—"}</span>
-                                </div>
-                            </button>
+                                </button>
+                            </div>
                         ))}
                     </div>
                     {!list.length ? (
@@ -227,7 +226,6 @@ export function CastPanel({
 
 function CastEditor({ projectId, cast, looks, ratios, onChanged, onOpenCanvas, canvasOpening }: { projectId: string; cast: DramaCast; looks: DramaCast[]; ratios: CastRatios; onChanged: () => void; onOpenCanvas: () => void; canvasOpening: boolean }) {
     const { message } = App.useApp();
-    const [previewing, setPreviewing] = useState(false);
     const [name, setName] = useState(cast.name);
     const [aliases, setAliases] = useState(parseList(cast.aliasesJson));
     const [appearance, setAppearance] = useState(cast.appearance);
@@ -280,14 +278,7 @@ function CastEditor({ projectId, cast, looks, ratios, onChanged, onOpenCanvas, c
     return (
         <div className="drama-editor">
             <div className="drama-cast-hero" style={castRatio(cast.kind, ratios).style}>
-                {cast.imageResourceId ? <MediaThumb resourceId={cast.imageResourceId} alt={cast.name} loading={castImageLoading} failed={castImageFailed} /> : null}
-                {cast.imageResourceId ? (
-                    <button type="button" className="drama-cast-hero-zoom" aria-label={`放大查看${cast.name}的参考图`} title="点击放大查看" onClick={() => setPreviewing(true)}>
-                        <span className="drama-cast-hero-zoom-hint" aria-hidden="true">
-                            <Maximize2 className="size-3.5" />
-                        </span>
-                    </button>
-                ) : null}
+                {cast.imageResourceId ? <MediaThumb resourceId={cast.imageResourceId} alt={`${cast.name} · ${kindLabel}参考图`} loading={castImageLoading} failed={castImageFailed} /> : null}
                 {!cast.imageResourceId || mediaBusy(cast.imageStatus) || cast.imageStatus === "failed" ? (
                     <div className={`drama-shot-placeholder ${mediaBusy(cast.imageStatus) ? "is-busy" : ""}`}>
                         {cast.imageStatus === "failed" ? (
@@ -384,7 +375,6 @@ function CastEditor({ projectId, cast, looks, ratios, onChanged, onOpenCanvas, c
             </div>
             <p className="drama-editor-note">旧版本保留在版本记录中；锁定后参考图不会被重新生成。上传或从画布采用的形象图会自动锁定，生成剧情段视频时随请求发送，并要求外貌、发型与服装以它为准。</p>
             <DramaTakeList projectId={projectId} ownerId={cast.id} kind="cast" />
-            {previewing && cast.imageResourceId ? <CanvasImagePreview storageKey={`resource:${cast.imageResourceId}`} alt={`${cast.name} · ${kindLabel}参考图`} onClose={() => setPreviewing(false)} /> : null}
         </div>
     );
 }
@@ -589,8 +579,10 @@ function InboxChip({ item, cast, onOpen }: { item: DramaInboxItem; cast?: DramaC
     if (item.kind === "cast_failed") {
         content = (
             <>
-                <span className="drama-avatar">{cast?.imageResourceId ? <MediaThumb resourceId={cast.imageResourceId} alt="" /> : item.title.slice(0, 1)}</span>
-                {item.title}
+                <span className="drama-avatar">{cast?.imageResourceId ? <MediaThumb resourceId={cast.imageResourceId} alt={cast.name} /> : item.title.slice(0, 1)}</span>
+                <button type="button" onClick={() => onOpen(item)}>
+                    {item.title}
+                </button>
             </>
         );
     } else if (item.kind === "segment_failed") {
@@ -609,8 +601,14 @@ function InboxChip({ item, cast, onOpen }: { item: DramaInboxItem; cast?: DramaC
     } else {
         content = item.title;
     }
+    if (item.kind === "cast_failed")
+        return (
+            <span className="drama-inbox-chip has-avatar" title={item.detail}>
+                {content}
+            </span>
+        );
     return (
-        <button type="button" className={`drama-inbox-chip ${item.kind === "cast_failed" ? "has-avatar" : ""}`} title={item.detail} onClick={() => onOpen(item)}>
+        <button type="button" className="drama-inbox-chip" title={item.detail} onClick={() => onOpen(item)}>
             {content}
         </button>
     );
