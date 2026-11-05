@@ -139,8 +139,6 @@ jobs:
             BUILD_VERSION=${{ needs.prepare.outputs.version }}
             BUILD_COMMIT=${{ github.sha }}
             BUILD_TIME=${{ needs.prepare.outputs.build_time }}
-            CANVAS_BASE_PATH=${{ vars.CANVAS_BASE_PATH || '/' }}
-            VITE_CANVAS_BACKEND_URL=${{ vars.VITE_CANVAS_BACKEND_URL || '/api' }}
           tags: ${{ env.IMAGE }}:sha-${{ github.sha }}-${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}

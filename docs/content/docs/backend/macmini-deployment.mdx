@@ -5,22 +5,22 @@ description: 外置数据库、独立 Redis、共享 Nginx 和固定版本镜像
 
 ## 部署边界
 
-使用自己的仓库发布镜像。通过仓库变量设置前端构建前缀，例如 `CANVAS_BASE_PATH=/rightmovie/` 与 `VITE_CANVAS_BACKEND_URL=/rightmovie/api`。默认值仍为根路径。
+镜像在开发机本地构建，通过 SSH 内网分发。前端构建参数为 `CANVAS_BASE_PATH=/rightmovie/` 与 `VITE_CANVAS_BACKEND_URL=/rightmovie/api`。默认值仍为根路径。
 
 `docker-compose.external.yml` 复用外部 PostgreSQL 网络 `rightmovie-database`，运行独立 Redis、迁移、后端、Agent 和前端。前端仅监听本机 `127.0.0.1:18880`，共享 Nginx 将 `/rightmovie/` 去掉前缀后代理到该入口。SSE 路径需要在两级代理上关闭缓冲。现有 PostgreSQL 容器应接入这个专用网络，并建立专用账号及数据库。
 
 ## 运行目录
 
-扩展盘上的持久根目录包含 `data/`、`redis/`、`web/`、`deployment/`。部署目录保存权限为 0600 的 `.env`、`compose.yaml`、`release.env` 和可信的 `deploy-published.py`。`.env` 配置数据库、Redis、Agent 凭证、公开访问地址和数据路径。所有真实配置都在版本库外保存。
+扩展盘上的持久根目录包含 `data/`、`redis/`、`web/`、`deployment/`。部署目录保存权限为 0600 的 `.env`、`compose.yaml`、`release.env` 和可信的 `deploy-local.py`。`.env` 配置数据库、Redis、Agent 凭证、公开访问地址和数据路径。所有真实配置都在版本库外保存。
 
 首次管理员在尚无用户时通过注册接口创建。关闭公开注册，首次初始化通过本机回环接口完成。渠道使用系统导入导出接口转移能力和价格，再单独写入密钥。对象存储使用生产专用私有空间，上传、签名读取、浏览器预览和上游参考图读取均需验收。
 
 ## 发布流程
 
-本地检查通过后推送 main，GitHub `publish-images.yml` 运行质量检查并发布三个镜像。Mac mini 用 LaunchAgent 每五分钟运行已安装的发布脚本，只有创建 `enabled` 文件才启用自动部署。脚本只接受当前 main 提交，且该提交的发布工作流必须整体成功。
+代码提交后运行 `bash scripts/release-macmini.sh`。脚本要求工作区干净，先运行完整推送前检查，然后构建三个 ARM64 镜像，以完整提交 SHA 标记。`RIGHTMOVIE_SSH_TARGET` 可覆盖 SSH 目标，`BUN_BIN` 可指定 Bun 可执行文件。
 
-部署脚本拉取三个 SHA 标签，检查镜像 revision 并解析固定 digest。然后停止入口和后端、等待任务排空，备份数据库及数据目录，执行迁移，启动服务并检查健康状态和提交号。成功后记录 `deployed-sha`，保留上一组镜像的 `previous-release.env`。
+镜像通过 Docker save 解包为内容寻址文件，rsync 经 SSH 压缩同步到生产机的专用传输缓存。首次传输全部文件，以后复用内容相同的层文件。生产机导入镜像后，部署脚本停止入口和后端、等待任务排空，备份数据库及数据目录，执行迁移，启动服务并检查健康状态和提交号。成功后记录 `deployed-sha`，保留上一组镜像的 `previous-release.env`。
 
-移除 `enabled` 文件暂停后续发布。部署失败保留 `deployment-in-progress`，自动重试停止，需要检查日志后人工恢复。数据库结构可能变化，恢复上一版程序前需要确认迁移兼容性，必要时恢复对应数据库与数据备份。备份含敏感信息，需要额外同步到独立备份位置，并设置保留策略。
+部署失败保留 `deployment-in-progress`，再次发布前需要检查日志并人工恢复。数据库结构可能变化，恢复上一版程序前需要确认迁移兼容性，必要时恢复对应数据库与数据备份。备份含敏感信息，需要额外同步到独立备份位置，并设置保留策略。保留前一版镜像以便恢复，定期检查镜像和传输缓存占用。
 
-GitHub 公共 API 轮询无需向生产机授予仓库写权限。脚本和 Compose 的变化需要显式更新服务器安装副本；自动发布只更新镜像，不覆盖生产配置。若仓库改为私有，需要单独配置只读凭证。
+GitHub CI 对 main 和 PR 执行质量检查。定制仓库禁用 `Publish container images` 工作流，生产机不轮询 GitHub，也不从 GHCR 拉取业务镜像。本地发布会同步版本内的部署脚本和 Compose，生产 `.env` 与持久数据继续保留。单机更新期间会短暂中断访问。
