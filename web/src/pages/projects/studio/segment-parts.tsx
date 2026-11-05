@@ -93,6 +93,9 @@ export function referenceMissingReason(segment: DramaSegment, cast: DramaCast | 
     if (mediaBusy(cast?.imageStatus || "")) return "参考图生成中";
     if (!cast?.imageResourceId || cast.imageStatus !== "ready") return "参考图未生成";
     if (segment.request.operation === "text_to_video") return "模型按文生视频生成，不收参考图";
+    if (segment.request.operation === "image_to_video" && segment.request.referenceCapacity === 0 && (segment.request.firstFrameResourceId || segment.request.firstFramePending)) {
+        return "本段使用上一段真实尾帧续接，不额外附角色或场景参考图；画面以首帧为准";
+    }
     return segment.request.referenceLimited ? "超出每段参考图上限" : "超出模型参考图上限";
 }
 
@@ -136,7 +139,7 @@ export function SegmentInputs({ segment, castById, compact = false, frameOnly = 
                     </>
                 );
                 return (
-                    <Tooltip key={ref.castId} title={`${ref.label} · ${CAST_KIND_LABEL[ref.kind]} · ${ref.name}${ref.sent ? "" : `（未附图：${reason}，按文字设定生成）`}`} mouseEnterDelay={0.3}>
+                    <Tooltip key={ref.castId} title={`${ref.label} · ${CAST_KIND_LABEL[ref.kind]} · ${ref.name}${ref.sent ? "" : `（未附图：${reason}）`}`} mouseEnterDelay={0.3}>
                         {onOpenCast ? (
                             <button type="button" className={`drama-sg-input ${ref.sent ? "" : "is-missing"}`} onClick={() => onOpenCast(ref.castId)}>
                                 {body}

@@ -136,6 +136,35 @@ func finishProtocolAdapterResult(ctx context.Context, input canvasGenerationInpu
 		return nil, errors.New("声明式协议结果下载返回空内容")
 	}
 	mimeType = strings.TrimSpace(strings.Split(mimeType, ";")[0])
+	if mimeType == "application/json" || strings.HasSuffix(mimeType, "+json") {
+		state, parseErr := adapter.ParsePoll(ctx, protocol.PollContext{BaseURL: input.Config.BaseURL, Model: request.Model, Request: request, TaskID: taskID}, data)
+		if parseErr != nil {
+			return nil, fmt.Errorf("解析声明式协议结果清单失败：%w", parseErr)
+		}
+		if state.Status == protocol.StatusFailed || state.Status == protocol.StatusCancelled {
+			return nil, protocolResultError(state.Message, taskID)
+		}
+		if !protocolResultHasOutput(input.Mode, state.Result) {
+			return nil, errors.New("声明式协议结果清单没有返回媒体地址")
+		}
+		base, parseErr := url.Parse(input.Config.BaseURL)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		for _, media := range [][]protocol.MediaReference{state.Result.Images, state.Result.Videos, state.Result.Audios} {
+			for index := range media {
+				if media[index].URL == "" {
+					continue
+				}
+				reference, err := url.Parse(media[index].URL)
+				if err != nil {
+					return nil, err
+				}
+				media[index].URL = base.ResolveReference(reference).String()
+			}
+		}
+		return finishProtocolResult(ctx, input.Config, input.Mode, taskID, state.Result, pollPolicy)
+	}
 	if mimeType == "" {
 		mimeType = "application/octet-stream"
 	}
@@ -152,6 +181,14 @@ func finishProtocolAdapterResult(ctx context.Context, input canvasGenerationInpu
 		return nil, fmt.Errorf("声明式协议结果下载不支持生成模式 %s", input.Mode)
 	}
 	return finishProtocolResult(ctx, input.Config, input.Mode, taskID, downloaded, pollPolicy)
+}
+
+func protocolResultReady(mode string, result *protocol.Result, adapter protocol.Adapter) bool {
+	if protocolResultHasOutput(mode, result) {
+		return true
+	}
+	capability, ok := adapter.(protocol.ResultCapability)
+	return ok && capability.ResultAvailable()
 }
 
 func protocolResultHasOutput(mode string, result *protocol.Result) bool {

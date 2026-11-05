@@ -535,7 +535,7 @@ function SegmentReceipt({ segment }: { segment: DramaSegment }) {
           ]
         : [];
     const rows: ReceiptRow[] = [
-        { tone: sent === references ? "ok" : "warn", label: "参考图实发", value: `${sent}/${references} 张${references > sent ? "（未附图的按文字设定生成）" : ""}` },
+        { tone: sent === references ? "ok" : "warn", label: "参考图实发", value: `${sent}/${references} 张${references > sent ? "（未附图原因见生成依据）" : ""}` },
         {
             tone: first || request.firstFrameResourceId ? "ok" : "warn",
             label: request.operation === "reference_to_video" && !first ? "衔接参考" : "首帧",
@@ -784,7 +784,7 @@ function SegmentPrompt({ segment, castById, writing, onSave, onWrite }: { segmen
                                 <span
                                     key={ref.castId}
                                     className={`drama-sdx-prefix-ref ${ref.sent ? "" : "is-missing"} ${usage.used.has(index + 1) ? "" : "is-unused"}`}
-                                    title={ref.sent ? `${ref.label}：${ref.name}` : `${ref.label}（${ref.name}）未附图，按文字设定生成`}
+                                    title={ref.sent ? `${ref.label}：${ref.name}` : `${ref.label}（${ref.name}）未附图：${referenceMissingReason(segment, castById.get(ref.castId))}`}
                                 >
                                     <span className="drama-sdx-prefix-thumb">{resourceId ? <MediaThumb resourceId={resourceId} alt="" /> : null}</span>
                                     <b>{ref.label}</b>

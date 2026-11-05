@@ -42,13 +42,13 @@
 | `create.path` | `"/v1/videos"` |
 | `create.contentType` | `"application/json"` |
 | `create.body.model` | `{"$ref":"request.model"}` |
-| `create.body.input.prompt` | `{"$ref":"request.prompt"}` |
-| `create.body.input.media` | `{"$omitEmpty":{"$concatArrays":[{"$map":{"from":{"$sortByOrder":{"$ref":"request.images"}},"as":"media","in":{"type":{"$coalesce":[{"$ref":"media.role"},"reference_image"]},"url":{"$ref":"media.value"}}}},{"$map":{"from":{"$sortByOrder":{"$ref":"request.videos"}},"as":"media","in":{"type":{"$coalesce":[{"$ref":"media.role"},"reference_video"]},"url":{"$ref":"media.value"}}}},{"$map":{"from":{"$sortByOrder":{"$ref":"request.audios"}},"as":"media","in":{"type":{"$coalesce":[{"$ref":"media.role"},"reference_voice"]},"url":{"$ref":"media.value"}}}}]}}` |
-| `create.body.parameters.resolution` | `{"$coalesce":[{"$ref":"request.resolution"},"720P"]}` |
-| `create.body.parameters.ratio` | `{"$coalesce":[{"$ref":"request.aspectRatio"},"16:9"]}` |
-| `create.body.parameters.duration` | `{"$if":{"condition":{"$gt":[{"$ref":"request.duration"},0]},"then":{"$ref":"request.duration"},"else":5}}` |
-| `create.body.parameters.watermark` | `{"$ref":"request.watermark"}` |
-| `create.body.parameters.prompt_extend` | `{"$coalesce":[{"$ref":"request.providerOptions.newapi-channel-1.prompt_extend"},false]}` |
+| `create.body.metadata.input.prompt` | `{"$ref":"request.prompt"}` |
+| `create.body.metadata.input.media` | `{"$omitEmpty":{"$concatArrays":[{"$map":{"from":{"$sortByOrder":{"$ref":"request.images"}},"as":"media","in":{"type":{"$coalesce":[{"$ref":"media.role"},"reference_image"]},"url":{"$ref":"media.value"}}}},{"$map":{"from":{"$sortByOrder":{"$ref":"request.videos"}},"as":"media","in":{"type":{"$coalesce":[{"$ref":"media.role"},"reference_video"]},"url":{"$ref":"media.value"}}}},{"$map":{"from":{"$sortByOrder":{"$ref":"request.audios"}},"as":"media","in":{"type":{"$coalesce":[{"$ref":"media.role"},"reference_voice"]},"url":{"$ref":"media.value"}}}}]}}` |
+| `create.body.metadata.parameters.resolution` | `{"$coalesce":[{"$ref":"request.resolution"},"720P"]}` |
+| `create.body.metadata.parameters.ratio` | `{"$coalesce":[{"$ref":"request.aspectRatio"},"16:9"]}` |
+| `create.body.metadata.parameters.duration` | `{"$if":{"condition":{"$gt":[{"$ref":"request.duration"},0]},"then":{"$ref":"request.duration"},"else":5}}` |
+| `create.body.metadata.parameters.watermark` | `{"$ref":"request.watermark"}` |
+| `create.body.metadata.parameters.prompt_extend` | `{"$coalesce":[{"$ref":"request.providerOptions.newapi-channel-1.prompt_extend"},false]}` |
 | `poll.method` | `"GET"` |
 | `poll.path` | `"/v1/videos/{{taskId}}"` |
 | `poll.contentType` | `"application/json"` |
@@ -76,7 +76,7 @@
 
 ## 兼容边界
 
-该包只代表上述线协议 profile；同一品牌的其他 endpoint、云区域或网关包装必须使用独立插件，不能根据模型名猜测。
+NewAPI 任务插件通过 metadata.input 与 metadata.parameters 接收原生媒体任务字段；不要再发送顶层 input/parameters，否则 Alibaba convert 会丢失 prompt 和 media。
 
 <!-- YINGCE_MANIFEST_CONTRACT_START -->
 ## Manifest 完整接口定义
@@ -88,7 +88,7 @@
   "apiVersion": "yingce.plugin/v2",
   "id": "newapi-media-task-v1",
   "name": "NewAPI Media Task Channel 1",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "author": "NewAPI / 影策",
   "description": "NewAPI Media Task Channel 1 独立请求协议插件。",
   "documentation": "<当前插件的完整 documentation，由 README.md 与 docs/interface.md 拼接而成；为避免 JSON 递归，此处不重复展开正文。>",
@@ -214,129 +214,131 @@
             "model": {
               "$ref": "request.model"
             },
-            "input": {
-              "prompt": {
-                "$ref": "request.prompt"
+            "metadata": {
+              "input": {
+                "prompt": {
+                  "$ref": "request.prompt"
+                },
+                "media": {
+                  "$omitEmpty": {
+                    "$concatArrays": [
+                      {
+                        "$map": {
+                          "from": {
+                            "$sortByOrder": {
+                              "$ref": "request.images"
+                            }
+                          },
+                          "as": "media",
+                          "in": {
+                            "type": {
+                              "$coalesce": [
+                                {
+                                  "$ref": "media.role"
+                                },
+                                "reference_image"
+                              ]
+                            },
+                            "url": {
+                              "$ref": "media.value"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "$map": {
+                          "from": {
+                            "$sortByOrder": {
+                              "$ref": "request.videos"
+                            }
+                          },
+                          "as": "media",
+                          "in": {
+                            "type": {
+                              "$coalesce": [
+                                {
+                                  "$ref": "media.role"
+                                },
+                                "reference_video"
+                              ]
+                            },
+                            "url": {
+                              "$ref": "media.value"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "$map": {
+                          "from": {
+                            "$sortByOrder": {
+                              "$ref": "request.audios"
+                            }
+                          },
+                          "as": "media",
+                          "in": {
+                            "type": {
+                              "$coalesce": [
+                                {
+                                  "$ref": "media.role"
+                                },
+                                "reference_voice"
+                              ]
+                            },
+                            "url": {
+                              "$ref": "media.value"
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
               },
-              "media": {
-                "$omitEmpty": {
-                  "$concatArrays": [
+              "parameters": {
+                "resolution": {
+                  "$coalesce": [
                     {
-                      "$map": {
-                        "from": {
-                          "$sortByOrder": {
-                            "$ref": "request.images"
-                          }
-                        },
-                        "as": "media",
-                        "in": {
-                          "type": {
-                            "$coalesce": [
-                              {
-                                "$ref": "media.role"
-                              },
-                              "reference_image"
-                            ]
-                          },
-                          "url": {
-                            "$ref": "media.value"
-                          }
-                        }
-                      }
+                      "$ref": "request.resolution"
                     },
+                    "720P"
+                  ]
+                },
+                "ratio": {
+                  "$coalesce": [
                     {
-                      "$map": {
-                        "from": {
-                          "$sortByOrder": {
-                            "$ref": "request.videos"
-                          }
-                        },
-                        "as": "media",
-                        "in": {
-                          "type": {
-                            "$coalesce": [
-                              {
-                                "$ref": "media.role"
-                              },
-                              "reference_video"
-                            ]
-                          },
-                          "url": {
-                            "$ref": "media.value"
-                          }
-                        }
-                      }
+                      "$ref": "request.aspectRatio"
                     },
-                    {
-                      "$map": {
-                        "from": {
-                          "$sortByOrder": {
-                            "$ref": "request.audios"
-                          }
+                    "16:9"
+                  ]
+                },
+                "duration": {
+                  "$if": {
+                    "condition": {
+                      "$gt": [
+                        {
+                          "$ref": "request.duration"
                         },
-                        "as": "media",
-                        "in": {
-                          "type": {
-                            "$coalesce": [
-                              {
-                                "$ref": "media.role"
-                              },
-                              "reference_voice"
-                            ]
-                          },
-                          "url": {
-                            "$ref": "media.value"
-                          }
-                        }
-                      }
-                    }
+                        0
+                      ]
+                    },
+                    "then": {
+                      "$ref": "request.duration"
+                    },
+                    "else": 5
+                  }
+                },
+                "watermark": {
+                  "$ref": "request.watermark"
+                },
+                "prompt_extend": {
+                  "$coalesce": [
+                    {
+                      "$ref": "request.providerOptions.newapi-channel-1.prompt_extend"
+                    },
+                    false
                   ]
                 }
-              }
-            },
-            "parameters": {
-              "resolution": {
-                "$coalesce": [
-                  {
-                    "$ref": "request.resolution"
-                  },
-                  "720P"
-                ]
-              },
-              "ratio": {
-                "$coalesce": [
-                  {
-                    "$ref": "request.aspectRatio"
-                  },
-                  "16:9"
-                ]
-              },
-              "duration": {
-                "$if": {
-                  "condition": {
-                    "$gt": [
-                      {
-                        "$ref": "request.duration"
-                      },
-                      0
-                    ]
-                  },
-                  "then": {
-                    "$ref": "request.duration"
-                  },
-                  "else": 5
-                }
-              },
-              "watermark": {
-                "$ref": "request.watermark"
-              },
-              "prompt_extend": {
-                "$coalesce": [
-                  {
-                    "$ref": "request.providerOptions.newapi-channel-1.prompt_extend"
-                  },
-                  false
-                ]
               }
             }
           }

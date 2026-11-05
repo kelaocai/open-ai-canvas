@@ -677,22 +677,25 @@ add({
 });
 
 add({
-  id: "newapi-media-task-v1", providerId: "newapi-channel-1", name: "NewAPI Media Task Channel 1", vendor: "NewAPI", capability: "video",
+  id: "newapi-media-task-v1", providerId: "newapi-channel-1", name: "NewAPI Media Task Channel 1", vendor: "NewAPI", capability: "video", version: "2.0.1",
   baseUrl: "http://127.0.0.1:3000", auth: bearer, params: videoParams, requiresPublicMediaUrls: true,
+  notes: "NewAPI 任务插件通过 metadata.input 与 metadata.parameters 接收原生媒体任务字段；不要再发送顶层 input/parameters，否则 Alibaba convert 会丢失 prompt 和 media。",
   create: jsonCreate("/v1/videos", {
     model: ref("request.model"),
-    input: {
-      prompt: ref("request.prompt"),
-      media: omit({ $concatArrays: [
-        map(sorted(ref("request.images")), "media", { type: coalesce(ref("media.role"), "reference_image"), url: ref("media.value") }),
-        map(sorted(ref("request.videos")), "media", { type: coalesce(ref("media.role"), "reference_video"), url: ref("media.value") }),
-        map(sorted(ref("request.audios")), "media", { type: coalesce(ref("media.role"), "reference_voice"), url: ref("media.value") })
-      ] })
-    },
-    parameters: {
-      resolution: coalesce(ref("request.resolution"), "720P"), ratio: coalesce(ref("request.aspectRatio"), "16:9"),
-      duration: conditional(gt(ref("request.duration"), 0), ref("request.duration"), 5), watermark: ref("request.watermark"),
-      prompt_extend: coalesce(ref("request.providerOptions.newapi-channel-1.prompt_extend"), false)
+    metadata: {
+      input: {
+        prompt: ref("request.prompt"),
+        media: omit({ $concatArrays: [
+          map(sorted(ref("request.images")), "media", { type: coalesce(ref("media.role"), "reference_image"), url: ref("media.value") }),
+          map(sorted(ref("request.videos")), "media", { type: coalesce(ref("media.role"), "reference_video"), url: ref("media.value") }),
+          map(sorted(ref("request.audios")), "media", { type: coalesce(ref("media.role"), "reference_voice"), url: ref("media.value") })
+        ] })
+      },
+      parameters: {
+        resolution: coalesce(ref("request.resolution"), "720P"), ratio: coalesce(ref("request.aspectRatio"), "16:9"),
+        duration: conditional(gt(ref("request.duration"), 0), ref("request.duration"), 5), watermark: ref("request.watermark"),
+        prompt_extend: coalesce(ref("request.providerOptions.newapi-channel-1.prompt_extend"), false)
+      }
     }
   }),
   poll: { method: "GET", path: "/v1/videos/{{taskId}}" }, response: asyncResponse("video")
@@ -1335,7 +1338,7 @@ function manifestFor(spec) {
     apiVersion: "yingce.plugin/v2",
     id: spec.id,
     name: spec.name,
-    version: "2.0.0",
+    version: spec.version || "2.0.0",
     author: `${spec.vendor} / 影策`,
     description: `${spec.name} 独立请求协议插件。`,
     documentation: `# ${spec.name}\n\n完整字段、映射、响应、鉴权和兼容边界见包内 README.md 与 docs/interface.md。\n\n## 影策运行时合同\n\n用户只操作统一的文本、图片或视频能力；插件负责把统一请求转换为 ${spec.name} 上游协议。`,

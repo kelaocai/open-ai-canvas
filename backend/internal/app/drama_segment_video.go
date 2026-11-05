@@ -108,16 +108,17 @@ func segmentVideoChoice(segment model.DramaSegment, fallback DramaModelChoice) D
 // Reference numbering remains stable even when a model cannot accept every image.
 // 返回值依次是请求预演、随请求发送的参考图与参考音频（任务输入的媒体项）。
 func (s *Service) prepareDramaSegment(settings DramaSettings, draft dramaSegmentDraft, segment model.DramaSegment, previous *model.DramaSegment, casts map[string]model.DramaCast) (DramaSegmentRequest, []any, []any, error) {
+	request := DramaSegmentRequest{AspectRatio: settings.AspectRatio, References: []DramaSegmentReference{}, AudioReferences: []DramaSegmentAudioReference{}}
 	if settings.parallelVideo() {
 		// 并行出片：每段只按参考图独立生成，不带上一段尾帧，也就不依赖上一段完成。
 		previous = nil
 	}
 	profile, err := s.dramaVideoProfile(segmentVideoChoice(segment, settings.Models.Video))
 	if err != nil {
-		return DramaSegmentRequest{}, nil, nil, err
+		return request, nil, nil, err
 	}
 	screen := profile.screen(settings.AspectRatio, settings.VideoResolution)
-	request := DramaSegmentRequest{Seconds: production.SnapVideoSeconds(draft.view.DurationMs, profile.Durations), MaxVideoSeconds: profile.maxSeconds(), AspectRatio: settings.AspectRatio, Size: screen.Size, Resolution: screen.Resolution, PromptMaxChars: profile.PromptMaxChars, GenerateAudio: profile.GenerateAudio, References: []DramaSegmentReference{}, AudioReferences: []DramaSegmentAudioReference{}, ModelMaxAudios: profile.MaxAudios}
+	request = DramaSegmentRequest{Seconds: production.SnapVideoSeconds(draft.view.DurationMs, profile.Durations), MaxVideoSeconds: profile.maxSeconds(), AspectRatio: settings.AspectRatio, Size: screen.Size, Resolution: screen.Resolution, PromptMaxChars: profile.PromptMaxChars, GenerateAudio: profile.GenerateAudio, References: []DramaSegmentReference{}, AudioReferences: []DramaSegmentAudioReference{}, ModelMaxAudios: profile.MaxAudios}
 	if draft.view.DurationMs > int64(request.MaxVideoSeconds)*1000 {
 		return request, nil, nil, errors.New("剧情段超过所选视频模型的时长上限，请调整分镜时长或重新改编")
 	}
@@ -165,6 +166,11 @@ func (s *Service) prepareDramaSegment(settings DramaSettings, draft dramaSegment
 	capacity := profile.MaxImages
 	if previous != nil {
 		capacity--
+	}
+	if previous != nil && profile.ContinuityFrameOnly {
+		capacity = 0
+		request.Warning = "本段使用上一段真实尾帧作为固定首帧，按顺序生成；H3 首帧模式不混用角色、场景参考图或参考音频，人物与场景沿用首帧。"
+		header = append(header, "必须从所附真实首帧延续动作、人物位置、服装与光线；正文描述与首帧不一致时以首帧为准，不重新建立开场构图。")
 	}
 	if request.Operation == "text_to_video" {
 		capacity = 0
@@ -430,6 +436,7 @@ func (r *dramaRun) submitSegmentVideo(job *model.DramaJob) (*model.Task, bool, e
 			}
 		}
 		metadata := r.metadata(job)
+		metadata["videoEditOperation"] = request.Operation
 		if previous != nil && request.Operation == "image_to_video" {
 			metadata["videoStartFrameNodeId"] = "first-frame"
 		}

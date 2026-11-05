@@ -27,6 +27,17 @@ func dramaModelIntent(capability string) *ModelRequestIntent {
 	return &ModelRequestIntent{Capability: "text"}
 }
 
+// 目录尚未组装剧情段素材；同时接受纯文本和单张参考图入口，实际素材数量在提交时校验。
+func (s *Service) resolveDramaLogicalModel(access *userGroupAccess, id, capability string) (*RoutedModel, error) {
+	intent := *dramaModelIntent(capability)
+	routed, err := s.ResolveLogicalModel(access, id, intent)
+	if err != nil && capability == "video" {
+		intent.Inputs = map[string]int{"image": 1}
+		return s.ResolveLogicalModel(access, id, intent)
+	}
+	return routed, err
+}
+
 // dramaSegmentOperation 是剧情段视频在该衔接方式下的主要生成方式，用于报价与能力校验。
 func dramaSegmentOperation(settings DramaSettings, profile dramaVideoProfile) (string, map[string]int) {
 	if !settings.parallelVideo() && !profile.ContinuityAsReference {
@@ -119,7 +130,7 @@ func (s *Service) dramaModelOptions(userID string, capability string) ([]DramaMo
 func (s *Service) dramaChoiceIssue(access *userGroupAccess, choice DramaModelChoice, capability string) string {
 	intent := dramaModelIntent(capability)
 	if choice.LogicalModelID != "" {
-		if _, err := s.ResolveLogicalModel(access, choice.LogicalModelID, *intent); err != nil {
+		if _, err := s.resolveDramaLogicalModel(access, choice.LogicalModelID, capability); err != nil {
 			return dramaIntentIssue(capability, err.Error())
 		}
 	} else {
@@ -136,7 +147,12 @@ func (s *Service) dramaChoiceIssue(access *userGroupAccess, choice DramaModelCho
 			if err != nil {
 				return "模型能力配置无效：" + err.Error()
 			}
-			if match := MatchCapability(spec, *intent); !match.Matched {
+			match := MatchCapability(spec, *intent)
+			if !match.Matched && capability == "video" {
+				intent.Inputs = map[string]int{"image": 1}
+				match = MatchCapability(spec, *intent)
+			}
+			if !match.Matched {
 				return dramaIntentIssue(capability, strings.Join(match.Reasons, "；"))
 			}
 		}
@@ -318,6 +334,7 @@ func missingDramaCapabilities(models DramaModels) []string {
 type dramaVideoProfile struct {
 	// MiniMax 首尾帧与多模态参考互斥，续接时将上一段尾帧作为普通参考图。
 	ContinuityAsReference bool
+	ContinuityFrameOnly   bool
 	Durations             production.DurationOptions
 	Operations            []string
 	MaxImages             int
@@ -379,7 +396,7 @@ func (s *Service) dramaVideoProfile(choice DramaModelChoice) (dramaVideoProfile,
 	var protocol model.ChannelInterfaceType
 	if choice.LogicalModelID != "" {
 		// 只读取能力画像；用户授权在任务准入时按分组校验。
-		routed, err := s.ResolveLogicalModel(nil, choice.LogicalModelID, *dramaModelIntent("video"))
+		routed, err := s.resolveDramaLogicalModel(nil, choice.LogicalModelID, "video")
 		if err != nil {
 			return dramaVideoProfile{}, err
 		}
@@ -413,6 +430,7 @@ func (s *Service) dramaVideoProfile(choice DramaModelChoice) (dramaVideoProfile,
 	// 不声明同步生成声音的模型也可以用：段视频没有对白与音效，由用户在选模型时自行取舍。
 	profile := dramaVideoProfile{Durations: options, Operations: video.Operations, MaxImages: video.References.MaxImages, MaxAudios: max(video.References.MaxAudios, 0), MaxAudioSeconds: max(video.References.MaxAudioDuration, 0), GenerateAudio: video.GenerateAudio.Supported, PromptMaxChars: max(video.References.PromptMaxChars, 0), video: video}
 	profile.ContinuityAsReference = protocol == model.ChannelInterfaceMiniMaxVideo
+	profile.ContinuityFrameOnly = protocol == "walkingwithai-h3"
 	if profile.maxSeconds() <= 0 {
 		return profile, errors.New("未声明可生成时长，无法按剧情段切分")
 	}

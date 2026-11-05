@@ -322,12 +322,17 @@ func TestOfficialVideoProfilesPreserveExplicitMediaRoles(t *testing.T) {
 			packageName: "newapi-media-task-v1.yingce-plugin", providerID: "newapi-channel-1", model: "minimax-h3", resolution: "720P",
 			assert: func(t *testing.T, spec RequestSpec) {
 				body := manifestTestBody(t, spec)
-				input, _ := body["input"].(map[string]any)
+				metadata, _ := body["metadata"].(map[string]any)
+				input, _ := metadata["input"].(map[string]any)
+				parameters, _ := metadata["parameters"].(map[string]any)
 				media, _ := input["media"].([]any)
 				first, _ := media[0].(map[string]any)
 				last, _ := media[1].(map[string]any)
-				if first["type"] != "first_frame" || last["type"] != "last_frame" {
-					t.Fatalf("NewAPI media = %#v", media)
+				if input["prompt"] != "镜头推进" || first["type"] != "first_frame" || last["type"] != "last_frame" || parameters["resolution"] != "720P" {
+					t.Fatalf("NewAPI metadata = %#v", metadata)
+				}
+				if body["input"] != nil || body["parameters"] != nil {
+					t.Fatalf("NewAPI native fields must stay inside metadata: %#v", body)
 				}
 			},
 		},

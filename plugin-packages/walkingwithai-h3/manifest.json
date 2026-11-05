@@ -1,0 +1,613 @@
+{
+  "apiVersion": "yingce.plugin/v2",
+  "id": "walkingwithai-h3",
+  "name": "与AI同行 H3 工作台",
+  "version": "1.1.0",
+  "author": "影策",
+  "description": "支持全能参考开场与真实首帧顺序续接。",
+  "documentation": "# 与AI同行 H3 工作台\n\n支持全能参考模式 r2v 和首帧模式 i2v，2–15 秒。开场段使用角色与场景参考图；续接段上传上一段真实尾帧，以 first_frame 提交，不能混用角色、场景参考图或参考音视频。素材先上传，生成结果通过输出清单转存。无需 API Key。\n\n---\n\n# 接口\n\nPOST /api/v1/assets 上传 file 和 asset_type，读取 asset_id。POST /api/v1/jobs 提交 feature=minimax-h3、inputs 和 parameters。带 first_frame 角色的图片时使用 mode=i2v，上传后的 asset_id 写入 inputs.first_frame；该模式只接受一张首帧，不混用参考图片、音频或视频。其他请求使用 mode=r2v，素材写入 reference_images/reference_videos/reference_audios。GET /api/v1/jobs/{job_id} 查询 queued/running/completed/failed/cancelled；完成后 GET /api/v1/jobs/{job_id}/outputs 获取 JSON 清单，下载 outputs[].url。相对路径按渠道地址解析；outputs/{index}/download 是训练产物接口，不用于视频。\n\n<!-- YINGCE_MANIFEST_CONTRACT_START -->\n## Manifest 完整接口定义\n\n以下 JSON 与插件包内实际 `manifest.json` 逐字段一致，覆盖插件身份、权限、配置、鉴权、参数、校验、创建、Agent、查询、取消、结果下载、响应和 Agent 响应映射。`documentation` 字段的值就是当前完整文档；为避免文档在自身内部无限递归，JSON 中仅用等义占位文本表示正文。\n\n```json\n{\n  \"apiVersion\": \"yingce.plugin/v2\",\n  \"id\": \"walkingwithai-h3\",\n  \"name\": \"与AI同行 H3 工作台\",\n  \"version\": \"1.1.0\",\n  \"author\": \"影策\",\n  \"description\": \"支持全能参考开场与真实首帧顺序续接。\",\n  \"documentation\": \"<当前插件的完整 documentation，由 README.md 与 docs/interface.md 拼接而成；为避免 JSON 递归，此处不重复展开正文。>\",\n  \"permissions\": [\n    \"generation.run\",\n    \"media.read\"\n  ],\n  \"configuration\": {\n    \"fields\": []\n  },\n  \"contributes\": {\n    \"providers\": [\n      {\n        \"id\": \"walkingwithai-h3\",\n        \"label\": \"与AI同行 H3 工作台\",\n        \"capabilities\": [\n          \"video\"\n        ],\n        \"scopes\": [\n          \"admin.system-channel\",\n          \"canvas\",\n          \"creation\",\n          \"agent\"\n        ],\n        \"baseUrl\": \"\",\n        \"detachedPolling\": true,\n        \"idempotentCreate\": false,\n        \"auth\": {\n          \"type\": \"none\"\n        },\n        \"parameters\": [\n          {\n            \"name\": \"prompt\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"prompt\",\n            \"description\": \"统一请求 prompt 映射至工作台任务参数；支持全能参考模式。\"\n          },\n          {\n            \"name\": \"images\",\n            \"type\": \"media[]\",\n            \"required\": false,\n            \"mapping\": \"media[] kind=image\",\n            \"description\": \"统一请求 images 映射至工作台任务参数；支持全能参考模式。\"\n          },\n          {\n            \"name\": \"videos\",\n            \"type\": \"media[]\",\n            \"required\": false,\n            \"mapping\": \"media[] kind=video\",\n            \"description\": \"统一请求 videos 映射至工作台任务参数；支持全能参考模式。\"\n          },\n          {\n            \"name\": \"audios\",\n            \"type\": \"media[]\",\n            \"required\": false,\n            \"mapping\": \"media[] kind=audio\",\n            \"description\": \"统一请求 audios 映射至工作台任务参数；支持全能参考模式。\"\n          },\n          {\n            \"name\": \"duration\",\n            \"type\": \"integer\",\n            \"required\": false,\n            \"mapping\": \"duration\",\n            \"description\": \"统一请求 duration 映射至工作台任务参数；支持全能参考模式。\"\n          },\n          {\n            \"name\": \"aspectRatio\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"ratio\",\n            \"description\": \"统一请求 aspectRatio 映射至工作台任务参数；支持全能参考模式。\"\n          },\n          {\n            \"name\": \"resolution\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"resolution\",\n            \"description\": \"统一请求 resolution 映射至工作台任务参数；支持全能参考模式。\"\n          }\n        ],\n        \"validations\": [\n          {\n            \"assert\": {\n              \"$lte\": [\n                {\n                  \"$len\": {\n                    \"$ref\": \"request.images\"\n                  }\n                },\n                9\n              ]\n            },\n            \"message\": \"images 数量超限\"\n          },\n          {\n            \"assert\": {\n              \"$lte\": [\n                {\n                  \"$len\": {\n                    \"$ref\": \"request.videos\"\n                  }\n                },\n                3\n              ]\n            },\n            \"message\": \"videos 数量超限\"\n          },\n          {\n            \"assert\": {\n              \"$lte\": [\n                {\n                  \"$len\": {\n                    \"$ref\": \"request.audios\"\n                  }\n                },\n                3\n              ]\n            },\n            \"message\": \"audios 数量超限\"\n          },\n          {\n            \"assert\": {\n              \"$lte\": [\n                {\n                  \"$len\": {\n                    \"$filter\": {\n                      \"from\": {\n                        \"$ref\": \"request.images\"\n                      },\n                      \"as\": \"image\",\n                      \"where\": {\n                        \"$eq\": [\n                          {\n                            \"$ref\": \"image.role\"\n                          },\n                          \"first_frame\"\n                        ]\n                      }\n                    }\n                  }\n                },\n                1\n              ]\n            },\n            \"message\": \"H3 首帧模式只能传入一张首帧图片\"\n          },\n          {\n            \"assert\": {\n              \"$if\": {\n                \"condition\": {\n                  \"$gt\": [\n                    {\n                      \"$len\": {\n                        \"$filter\": {\n                          \"from\": {\n                            \"$ref\": \"request.images\"\n                          },\n                          \"as\": \"image\",\n                          \"where\": {\n                            \"$eq\": [\n                              {\n                                \"$ref\": \"image.role\"\n                              },\n                              \"first_frame\"\n                            ]\n                          }\n                        }\n                      }\n                    },\n                    0\n                  ]\n                },\n                \"then\": {\n                  \"$eq\": [\n                    {\n                      \"$len\": {\n                        \"$ref\": \"request.images\"\n                      }\n                    },\n                    1\n                  ]\n                },\n                \"else\": true\n              }\n            },\n            \"message\": \"H3 首帧模式不能混用角色或场景参考图\"\n          },\n          {\n            \"assert\": {\n              \"$if\": {\n                \"condition\": {\n                  \"$gt\": [\n                    {\n                      \"$len\": {\n                        \"$filter\": {\n                          \"from\": {\n                            \"$ref\": \"request.images\"\n                          },\n                          \"as\": \"image\",\n                          \"where\": {\n                            \"$eq\": [\n                              {\n                                \"$ref\": \"image.role\"\n                              },\n                              \"first_frame\"\n                            ]\n                          }\n                        }\n                      }\n                    },\n                    0\n                  ]\n                },\n                \"then\": {\n                  \"$eq\": [\n                    {\n                      \"$add\": [\n                        {\n                          \"$len\": {\n                            \"$ref\": \"request.audios\"\n                          }\n                        },\n                        {\n                          \"$len\": {\n                            \"$ref\": \"request.videos\"\n                          }\n                        }\n                      ]\n                    },\n                    0\n                  ]\n                },\n                \"else\": true\n              }\n            },\n            \"message\": \"H3 首帧续接不能混用参考音频或参考视频\"\n          }\n        ],\n        \"upload\": {\n          \"kinds\": [\n            \"image\",\n            \"video\",\n            \"audio\"\n          ],\n          \"method\": \"POST\",\n          \"path\": \"/api/v1/assets\",\n          \"originPath\": true,\n          \"contentType\": \"multipart/form-data\",\n          \"body\": {\n            \"asset_type\": {\n              \"$ref\": \"media.kind\"\n            }\n          },\n          \"files\": [\n            {\n              \"name\": \"file\",\n              \"source\": {\n                \"$ref\": \"media\"\n              },\n              \"filename\": {\n                \"$concat\": [\n                  {\n                    \"$ref\": \"media.kind\"\n                  },\n                  \"-\",\n                  {\n                    \"$add\": [\n                      {\n                        \"$ref\": \"media.order\"\n                      },\n                      1\n                    ]\n                  },\n                  \".\",\n                  {\n                    \"$switch\": {\n                      \"cases\": [\n                        {\n                          \"when\": {\n                            \"$eq\": [\n                              {\n                                \"$ref\": \"media.mimeType\"\n                              },\n                              \"image/jpeg\"\n                            ]\n                          },\n                          \"then\": \"jpg\"\n                        },\n                        {\n                          \"when\": {\n                            \"$eq\": [\n                              {\n                                \"$ref\": \"media.mimeType\"\n                              },\n                              \"video/quicktime\"\n                            ]\n                          },\n                          \"then\": \"mov\"\n                        },\n                        {\n                          \"when\": {\n                            \"$eq\": [\n                              {\n                                \"$ref\": \"media.mimeType\"\n                              },\n                              \"audio/mpeg\"\n                            ]\n                          },\n                          \"then\": \"mp3\"\n                        },\n                        {\n                          \"when\": {\n                            \"$in\": [\n                              {\n                                \"$ref\": \"media.mimeType\"\n                              },\n                              [\n                                \"audio/wav\",\n                                \"audio/x-wav\",\n                                \"audio/wave\"\n                              ]\n                            ]\n                          },\n                          \"then\": \"wav\"\n                        },\n                        {\n                          \"when\": {\n                            \"$eq\": [\n                              {\n                                \"$ref\": \"media.kind\"\n                              },\n                              \"video\"\n                            ]\n                          },\n                          \"then\": \"mp4\"\n                        },\n                        {\n                          \"when\": {\n                            \"$eq\": [\n                              {\n                                \"$ref\": \"media.kind\"\n                              },\n                              \"audio\"\n                            ]\n                          },\n                          \"then\": \"mp3\"\n                        }\n                      ],\n                      \"default\": {\n                        \"$coalesce\": [\n                          {\n                            \"$at\": [\n                              {\n                                \"$split\": [\n                                  {\n                                    \"$ref\": \"media.mimeType\"\n                                  },\n                                  \"/\"\n                                ]\n                              },\n                              1\n                            ]\n                          },\n                          \"png\"\n                        ]\n                      }\n                    }\n                  }\n                ]\n              }\n            }\n          ],\n          \"id\": {\n            \"$ref\": \"response.asset_id\"\n          }\n        },\n        \"create\": {\n          \"method\": \"POST\",\n          \"path\": \"/api/v1/jobs\",\n          \"originPath\": true,\n          \"contentType\": \"application/json\",\n          \"body\": {\n            \"feature\": \"minimax-h3\",\n            \"mode\": {\n              \"$if\": {\n                \"condition\": {\n                  \"$gt\": [\n                    {\n                      \"$len\": {\n                        \"$filter\": {\n                          \"from\": {\n                            \"$ref\": \"request.images\"\n                          },\n                          \"as\": \"image\",\n                          \"where\": {\n                            \"$eq\": [\n                              {\n                                \"$ref\": \"image.role\"\n                              },\n                              \"first_frame\"\n                            ]\n                          }\n                        }\n                      }\n                    },\n                    0\n                  ]\n                },\n                \"then\": \"i2v\",\n                \"else\": \"r2v\"\n              }\n            },\n            \"inputs\": {\n              \"$if\": {\n                \"condition\": {\n                  \"$gt\": [\n                    {\n                      \"$len\": {\n                        \"$filter\": {\n                          \"from\": {\n                            \"$ref\": \"request.images\"\n                          },\n                          \"as\": \"image\",\n                          \"where\": {\n                            \"$eq\": [\n                              {\n                                \"$ref\": \"image.role\"\n                              },\n                              \"first_frame\"\n                            ]\n                          }\n                        }\n                      }\n                    },\n                    0\n                  ]\n                },\n                \"then\": {\n                  \"prompt\": {\n                    \"$ref\": \"request.prompt\"\n                  },\n                  \"first_frame\": {\n                    \"$at\": [\n                      {\n                        \"$map\": {\n                          \"from\": {\n                            \"$filter\": {\n                              \"from\": {\n                                \"$ref\": \"request.images\"\n                              },\n                              \"as\": \"image\",\n                              \"where\": {\n                                \"$eq\": [\n                                  {\n                                    \"$ref\": \"image.role\"\n                                  },\n                                  \"first_frame\"\n                                ]\n                              }\n                            }\n                          },\n                          \"as\": \"image\",\n                          \"in\": {\n                            \"$ref\": \"image.uploadId\"\n                          }\n                        }\n                      },\n                      0\n                    ]\n                  }\n                },\n                \"else\": {\n                  \"prompt\": {\n                    \"$ref\": \"request.prompt\"\n                  },\n                  \"reference_images\": {\n                    \"$map\": {\n                      \"from\": {\n                        \"$sortByOrder\": {\n                          \"$ref\": \"request.images\"\n                        }\n                      },\n                      \"as\": \"media\",\n                      \"in\": {\n                        \"$ref\": \"media.uploadId\"\n                      }\n                    }\n                  },\n                  \"reference_videos\": {\n                    \"$map\": {\n                      \"from\": {\n                        \"$sortByOrder\": {\n                          \"$ref\": \"request.videos\"\n                        }\n                      },\n                      \"as\": \"media\",\n                      \"in\": {\n                        \"$ref\": \"media.uploadId\"\n                      }\n                    }\n                  },\n                  \"reference_audios\": {\n                    \"$map\": {\n                      \"from\": {\n                        \"$sortByOrder\": {\n                          \"$ref\": \"request.audios\"\n                        }\n                      },\n                      \"as\": \"media\",\n                      \"in\": {\n                        \"$ref\": \"media.uploadId\"\n                      }\n                    }\n                  }\n                }\n              }\n            },\n            \"parameters\": {\n              \"duration\": {\n                \"$ref\": \"request.duration\"\n              },\n              \"resolution_preset\": {\n                \"$coalesce\": [\n                  {\n                    \"$ref\": \"request.resolution\"\n                  },\n                  \"480P\"\n                ]\n              },\n              \"aspect_ratio\": {\n                \"$coalesce\": [\n                  {\n                    \"$ref\": \"request.aspectRatio\"\n                  },\n                  \"9:16\"\n                ]\n              },\n              \"quality_mode\": \"balanced\"\n            }\n          }\n        },\n        \"poll\": {\n          \"method\": \"GET\",\n          \"path\": \"/api/v1/jobs/{{taskId}}\",\n          \"originPath\": true\n        },\n        \"cancel\": {\n          \"method\": \"POST\",\n          \"path\": \"/api/v1/jobs/{{taskId}}/cancel\",\n          \"originPath\": true\n        },\n        \"result\": {\n          \"method\": \"GET\",\n          \"path\": \"/api/v1/jobs/{{taskId}}/outputs\",\n          \"originPath\": true\n        },\n        \"response\": {\n          \"taskId\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.job_id\"\n              },\n              {\n                \"$ref\": \"taskId\"\n              }\n            ]\n          },\n          \"status\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.status\"\n              },\n              \"pending\"\n            ]\n          },\n          \"message\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.error.message\"\n              },\n              {\n                \"$ref\": \"response.error\"\n              },\n              {\n                \"$ref\": \"response.detail\"\n              }\n            ]\n          },\n          \"resultEphemeral\": true,\n          \"videos\": {\n            \"$map\": {\n              \"from\": {\n                \"$ref\": \"response.outputs\"\n              },\n              \"as\": \"output\",\n              \"in\": {\n                \"url\": {\n                  \"$ref\": \"output.url\"\n                }\n              }\n            }\n          }\n        }\n      }\n    ]\n  }\n}\n```\n<!-- YINGCE_MANIFEST_CONTRACT_END -->\n",
+  "permissions": [
+    "generation.run",
+    "media.read"
+  ],
+  "configuration": {
+    "fields": []
+  },
+  "contributes": {
+    "providers": [
+      {
+        "id": "walkingwithai-h3",
+        "label": "与AI同行 H3 工作台",
+        "capabilities": [
+          "video"
+        ],
+        "scopes": [
+          "admin.system-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "",
+        "detachedPolling": true,
+        "idempotentCreate": false,
+        "auth": {
+          "type": "none"
+        },
+        "parameters": [
+          {
+            "name": "prompt",
+            "type": "string",
+            "required": false,
+            "mapping": "prompt",
+            "description": "统一请求 prompt 映射至工作台任务参数；支持全能参考模式。"
+          },
+          {
+            "name": "images",
+            "type": "media[]",
+            "required": false,
+            "mapping": "media[] kind=image",
+            "description": "统一请求 images 映射至工作台任务参数；支持全能参考模式。"
+          },
+          {
+            "name": "videos",
+            "type": "media[]",
+            "required": false,
+            "mapping": "media[] kind=video",
+            "description": "统一请求 videos 映射至工作台任务参数；支持全能参考模式。"
+          },
+          {
+            "name": "audios",
+            "type": "media[]",
+            "required": false,
+            "mapping": "media[] kind=audio",
+            "description": "统一请求 audios 映射至工作台任务参数；支持全能参考模式。"
+          },
+          {
+            "name": "duration",
+            "type": "integer",
+            "required": false,
+            "mapping": "duration",
+            "description": "统一请求 duration 映射至工作台任务参数；支持全能参考模式。"
+          },
+          {
+            "name": "aspectRatio",
+            "type": "string",
+            "required": false,
+            "mapping": "ratio",
+            "description": "统一请求 aspectRatio 映射至工作台任务参数；支持全能参考模式。"
+          },
+          {
+            "name": "resolution",
+            "type": "string",
+            "required": false,
+            "mapping": "resolution",
+            "description": "统一请求 resolution 映射至工作台任务参数；支持全能参考模式。"
+          }
+        ],
+        "validations": [
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.images"
+                  }
+                },
+                9
+              ]
+            },
+            "message": "images 数量超限"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.videos"
+                  }
+                },
+                3
+              ]
+            },
+            "message": "videos 数量超限"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.audios"
+                  }
+                },
+                3
+              ]
+            },
+            "message": "audios 数量超限"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$filter": {
+                      "from": {
+                        "$ref": "request.images"
+                      },
+                      "as": "image",
+                      "where": {
+                        "$eq": [
+                          {
+                            "$ref": "image.role"
+                          },
+                          "first_frame"
+                        ]
+                      }
+                    }
+                  }
+                },
+                1
+              ]
+            },
+            "message": "H3 首帧模式只能传入一张首帧图片"
+          },
+          {
+            "assert": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$len": {
+                        "$filter": {
+                          "from": {
+                            "$ref": "request.images"
+                          },
+                          "as": "image",
+                          "where": {
+                            "$eq": [
+                              {
+                                "$ref": "image.role"
+                              },
+                              "first_frame"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    0
+                  ]
+                },
+                "then": {
+                  "$eq": [
+                    {
+                      "$len": {
+                        "$ref": "request.images"
+                      }
+                    },
+                    1
+                  ]
+                },
+                "else": true
+              }
+            },
+            "message": "H3 首帧模式不能混用角色或场景参考图"
+          },
+          {
+            "assert": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$len": {
+                        "$filter": {
+                          "from": {
+                            "$ref": "request.images"
+                          },
+                          "as": "image",
+                          "where": {
+                            "$eq": [
+                              {
+                                "$ref": "image.role"
+                              },
+                              "first_frame"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    0
+                  ]
+                },
+                "then": {
+                  "$eq": [
+                    {
+                      "$add": [
+                        {
+                          "$len": {
+                            "$ref": "request.audios"
+                          }
+                        },
+                        {
+                          "$len": {
+                            "$ref": "request.videos"
+                          }
+                        }
+                      ]
+                    },
+                    0
+                  ]
+                },
+                "else": true
+              }
+            },
+            "message": "H3 首帧续接不能混用参考音频或参考视频"
+          }
+        ],
+        "upload": {
+          "kinds": [
+            "image",
+            "video",
+            "audio"
+          ],
+          "method": "POST",
+          "path": "/api/v1/assets",
+          "originPath": true,
+          "contentType": "multipart/form-data",
+          "body": {
+            "asset_type": {
+              "$ref": "media.kind"
+            }
+          },
+          "files": [
+            {
+              "name": "file",
+              "source": {
+                "$ref": "media"
+              },
+              "filename": {
+                "$concat": [
+                  {
+                    "$ref": "media.kind"
+                  },
+                  "-",
+                  {
+                    "$add": [
+                      {
+                        "$ref": "media.order"
+                      },
+                      1
+                    ]
+                  },
+                  ".",
+                  {
+                    "$switch": {
+                      "cases": [
+                        {
+                          "when": {
+                            "$eq": [
+                              {
+                                "$ref": "media.mimeType"
+                              },
+                              "image/jpeg"
+                            ]
+                          },
+                          "then": "jpg"
+                        },
+                        {
+                          "when": {
+                            "$eq": [
+                              {
+                                "$ref": "media.mimeType"
+                              },
+                              "video/quicktime"
+                            ]
+                          },
+                          "then": "mov"
+                        },
+                        {
+                          "when": {
+                            "$eq": [
+                              {
+                                "$ref": "media.mimeType"
+                              },
+                              "audio/mpeg"
+                            ]
+                          },
+                          "then": "mp3"
+                        },
+                        {
+                          "when": {
+                            "$in": [
+                              {
+                                "$ref": "media.mimeType"
+                              },
+                              [
+                                "audio/wav",
+                                "audio/x-wav",
+                                "audio/wave"
+                              ]
+                            ]
+                          },
+                          "then": "wav"
+                        },
+                        {
+                          "when": {
+                            "$eq": [
+                              {
+                                "$ref": "media.kind"
+                              },
+                              "video"
+                            ]
+                          },
+                          "then": "mp4"
+                        },
+                        {
+                          "when": {
+                            "$eq": [
+                              {
+                                "$ref": "media.kind"
+                              },
+                              "audio"
+                            ]
+                          },
+                          "then": "mp3"
+                        }
+                      ],
+                      "default": {
+                        "$coalesce": [
+                          {
+                            "$at": [
+                              {
+                                "$split": [
+                                  {
+                                    "$ref": "media.mimeType"
+                                  },
+                                  "/"
+                                ]
+                              },
+                              1
+                            ]
+                          },
+                          "png"
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "id": {
+            "$ref": "response.asset_id"
+          }
+        },
+        "create": {
+          "method": "POST",
+          "path": "/api/v1/jobs",
+          "originPath": true,
+          "contentType": "application/json",
+          "body": {
+            "feature": "minimax-h3",
+            "mode": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$len": {
+                        "$filter": {
+                          "from": {
+                            "$ref": "request.images"
+                          },
+                          "as": "image",
+                          "where": {
+                            "$eq": [
+                              {
+                                "$ref": "image.role"
+                              },
+                              "first_frame"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    0
+                  ]
+                },
+                "then": "i2v",
+                "else": "r2v"
+              }
+            },
+            "inputs": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$len": {
+                        "$filter": {
+                          "from": {
+                            "$ref": "request.images"
+                          },
+                          "as": "image",
+                          "where": {
+                            "$eq": [
+                              {
+                                "$ref": "image.role"
+                              },
+                              "first_frame"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    0
+                  ]
+                },
+                "then": {
+                  "prompt": {
+                    "$ref": "request.prompt"
+                  },
+                  "first_frame": {
+                    "$at": [
+                      {
+                        "$map": {
+                          "from": {
+                            "$filter": {
+                              "from": {
+                                "$ref": "request.images"
+                              },
+                              "as": "image",
+                              "where": {
+                                "$eq": [
+                                  {
+                                    "$ref": "image.role"
+                                  },
+                                  "first_frame"
+                                ]
+                              }
+                            }
+                          },
+                          "as": "image",
+                          "in": {
+                            "$ref": "image.uploadId"
+                          }
+                        }
+                      },
+                      0
+                    ]
+                  }
+                },
+                "else": {
+                  "prompt": {
+                    "$ref": "request.prompt"
+                  },
+                  "reference_images": {
+                    "$map": {
+                      "from": {
+                        "$sortByOrder": {
+                          "$ref": "request.images"
+                        }
+                      },
+                      "as": "media",
+                      "in": {
+                        "$ref": "media.uploadId"
+                      }
+                    }
+                  },
+                  "reference_videos": {
+                    "$map": {
+                      "from": {
+                        "$sortByOrder": {
+                          "$ref": "request.videos"
+                        }
+                      },
+                      "as": "media",
+                      "in": {
+                        "$ref": "media.uploadId"
+                      }
+                    }
+                  },
+                  "reference_audios": {
+                    "$map": {
+                      "from": {
+                        "$sortByOrder": {
+                          "$ref": "request.audios"
+                        }
+                      },
+                      "as": "media",
+                      "in": {
+                        "$ref": "media.uploadId"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "parameters": {
+              "duration": {
+                "$ref": "request.duration"
+              },
+              "resolution_preset": {
+                "$coalesce": [
+                  {
+                    "$ref": "request.resolution"
+                  },
+                  "480P"
+                ]
+              },
+              "aspect_ratio": {
+                "$coalesce": [
+                  {
+                    "$ref": "request.aspectRatio"
+                  },
+                  "9:16"
+                ]
+              },
+              "quality_mode": "balanced"
+            }
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/api/v1/jobs/{{taskId}}",
+          "originPath": true
+        },
+        "cancel": {
+          "method": "POST",
+          "path": "/api/v1/jobs/{{taskId}}/cancel",
+          "originPath": true
+        },
+        "result": {
+          "method": "GET",
+          "path": "/api/v1/jobs/{{taskId}}/outputs",
+          "originPath": true
+        },
+        "response": {
+          "taskId": {
+            "$coalesce": [
+              {
+                "$ref": "response.job_id"
+              },
+              {
+                "$ref": "taskId"
+              }
+            ]
+          },
+          "status": {
+            "$coalesce": [
+              {
+                "$ref": "response.status"
+              },
+              "pending"
+            ]
+          },
+          "message": {
+            "$coalesce": [
+              {
+                "$ref": "response.error.message"
+              },
+              {
+                "$ref": "response.error"
+              },
+              {
+                "$ref": "response.detail"
+              }
+            ]
+          },
+          "resultEphemeral": true,
+          "videos": {
+            "$map": {
+              "from": {
+                "$ref": "response.outputs"
+              },
+              "as": "output",
+              "in": {
+                "url": {
+                  "$ref": "output.url"
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}
