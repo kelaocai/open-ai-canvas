@@ -1,0 +1,50 @@
+name: rightmovie
+services:
+  migrate:
+    user: "${CANVAS_UID:-501}:${CANVAS_GID:-20}"
+    image: ${CANVAS_BACKEND_IMAGE:?}
+    entrypoint: [migrate-schema]
+    command: [up]
+    env_file: .env
+    volumes: ["${CANVAS_DATA_PATH:?}:/data"]
+    networks: [database]
+  backend:
+    user: "${CANVAS_UID:-501}:${CANVAS_GID:-20}"
+    image: ${CANVAS_BACKEND_IMAGE:?}
+    env_file: .env
+    volumes: ["${CANVAS_DATA_PATH:?}:/data"]
+    networks: [default, database]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      yingce-agent: {condition: service_healthy}
+    restart: unless-stopped
+    stop_grace_period: 10m
+  yingce-agent:
+    image: ${CANVAS_AGENT_IMAGE:?}
+    environment:
+      YINGCE_AGENT_TOKEN: ${YINGCE_AGENT_TOKEN:?}
+      MAX_CONCURRENT_SESSIONS: 1
+      NODE_MAX_OLD_SPACE_SIZE: 512
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, "yes", --maxmemory, 256mb, --maxmemory-policy, noeviction]
+    volumes: ["${CANVAS_REDIS_PATH:?}:/data"]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    restart: unless-stopped
+  web:
+    image: ${CANVAS_WEB_IMAGE:?}
+    ports: ["127.0.0.1:18880:3000"]
+    volumes: ["${CANVAS_WEB_PATH:?}:/usr/share/nginx/html"]
+    depends_on:
+      backend: {condition: service_healthy}
+    restart: unless-stopped
+networks:
+  database:
+    external: true
+    name: rightmovie-database

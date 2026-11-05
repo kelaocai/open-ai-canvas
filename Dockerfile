@@ -10,18 +10,23 @@ COPY VERSION /app/VERSION
 COPY CHANGELOG.md /app/CHANGELOG.md
 COPY README.md /app/README.md
 COPY assets /app/assets
+COPY scripts/prefix-public-assets.mjs /app/prefix-public-assets.mjs
 COPY web ./
 COPY backend/internal/ecommerceagent/platform_knowledge.json /app/backend/internal/ecommerceagent/platform_knowledge.json
 ARG VITE_TLDRAW_LICENSE_KEY
 ARG BUILD_VERSION
 ARG BUILD_COMMIT=unknown
 ARG BUILD_TIME=unknown
+ARG CANVAS_BASE_PATH=/
+ARG VITE_CANVAS_BACKEND_URL=/api
+ENV VITE_CANVAS_BACKEND_URL=${VITE_CANVAS_BACKEND_URL}
 ENV VITE_TLDRAW_LICENSE_KEY=${VITE_TLDRAW_LICENSE_KEY}
 ENV CANVAS_BUILD_VERSION=${BUILD_VERSION}
 ENV CANVAS_BUILD_COMMIT=${BUILD_COMMIT}
 ENV CANVAS_BUILD_TIME=${BUILD_TIME}
 # 生产镜像只构建云端工作台前端；Agent Runtime 在后端 Worker 中运行。
-RUN bun --bun ./node_modules/vite/bin/vite.js build
+RUN bun --bun ./node_modules/vite/bin/vite.js build --base=${CANVAS_BASE_PATH}
+RUN bun /app/prefix-public-assets.mjs "${CANVAS_BASE_PATH}" dist
 
 # 运行镜像：nginx 托管静态前端，并在 Compose 中把 /api 转发到后端服务。
 FROM nginx:1.27-alpine
