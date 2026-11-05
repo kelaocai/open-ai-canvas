@@ -386,7 +386,7 @@ export function Storyboard({ shots, segments, aspectRatio, castById, defaultVide
                                 icon={<Play className="size-3.5" />}
                                 disabled={busy || !toGenerate.length}
                                 onClick={() => {
-                                    onGenerate(toGenerate, batchModel);
+                                    onGenerate(toGenerate, batchModel ?? defaultVideoModel);
                                     setSelected(new Set());
                                 }}
                             >

@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -806,11 +807,17 @@ func (s *Service) GenerateDramaSegments(userID, projectID, episodeID string, req
 		}
 		settings := parseDramaSettings(p.SettingsJSON)
 		choice := segmentVideoChoice(seg, settings.Models.Video)
-		if req.VideoModel != nil && !req.VideoModel.Empty() {
-			choice = *req.VideoModel
+		if req.VideoModel != nil {
+			choice = settings.Models.Video
+			if !req.VideoModel.Empty() {
+				choice = *req.VideoModel
+			}
 		}
 		profile, err := s.dramaVideoProfile(choice)
 		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, BadAuthRequest(fmt.Sprintf("第 %d 段的视频模型「%s」已停用或不存在，请选择可用模型后重新生成", index+1, firstNonEmpty(choice.Label, choice.ModelKey, choice.LogicalModelID)))
+			}
 			return nil, err
 		}
 		if issue := profile.screen(settings.AspectRatio, settings.VideoResolution).Issue; issue != "" {
