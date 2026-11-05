@@ -10,7 +10,7 @@ async function prepareEntry(dev, pathname) {
         entrypoints: [fileURLToPath(new URL("../src/main.tsx", import.meta.url))],
         target: "browser",
         format: "iife",
-        define: { "import.meta.env.DEV": JSON.stringify(dev) },
+        define: { "import.meta.env.DEV": JSON.stringify(dev), "import.meta.env.BASE_URL": '"/"' },
         plugins: [
             {
                 name: "entry-side-effects",
