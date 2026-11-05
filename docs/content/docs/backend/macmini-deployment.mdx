@@ -27,6 +27,8 @@ GitHub CI 对 main 和 PR 执行质量检查。定制仓库禁用 `Publish conta
 
 ## 公网入口与七牛预览验收
 
+七牛自定义域名、DNS 验证、证书开通及私有鉴权的完整排查过程见[七牛私有素材预览与证书配置经验](./qiniu-private-media)。
+
 nblink 隧道可能把 Origin 和 Referer 中的公网域名重写为本地回源地址。浏览器登录必须携带真实浏览器请求头验收。入口仅在明确的转发域名、同站 Referer 和 Fetch Metadata 满足条件时还原来源，同时对页面使用 `Referrer-Policy: same-origin`。验证正常登录成功以及跨站请求被拒绝，避免扩大后端 CORS 白名单。
 
 七牛空间连接测试验证上传、读取及清理。S3 默认域名会强制附加 `Content-Disposition: attachment`，浏览器新标签预览需要自定义 HTTPS 访问域名。为私有空间开启每次请求的回源鉴权，在后台填写 CDN 域名并选择七牛鉴权。切换前通过实际 TLS 握手检查证书域名及有效期，确认图片返回 inline、支持 Range，并拒绝未签名和过期签名请求。切换后复核已有资源的新访问地址。
