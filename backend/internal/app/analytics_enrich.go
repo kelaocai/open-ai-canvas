@@ -74,6 +74,13 @@ func (s *Service) enrichAPICallLogFailureSummary(log *model.ApiCallLog, response
 
 func (s *Service) enrichAPICallLogPayload(log *model.ApiCallLog, payload map[string]any) {
 	nestedTaskID := ""
+	// Modelverse 的提交和轮询响应把真实任务 ID 放在 output，URL 末段是操作名。
+	if log.Path == "/v1/tasks/submit" || log.Path == "/v1/tasks/status" {
+		if output, ok := payload["output"].(map[string]any); ok {
+			nestedTaskID, _ = firstJSONString(output, "task_id")
+			log.ProviderStatus = strings.ToLower(stringField(output, "task_status"))
+		}
+	}
 	if data, ok := payload["data"].(map[string]any); ok {
 		if log.Capability == "video" && strings.Contains(log.Path, "/v1/video/generations") {
 			if extracted, err := firstJSONString(data, "task_id", "taskId"); err == nil {
@@ -271,6 +278,9 @@ func decodeProviderResponsePayload(data []byte) (map[string]any, bool) {
 }
 
 func providerRequestIDFromPath(path string) string {
+	if path == "/v1/tasks/submit" || path == "/v1/tasks/status" {
+		return ""
+	}
 	parts := strings.Split(strings.Trim(strings.TrimSpace(path), "/"), "/")
 	for index := len(parts) - 1; index >= 0; index-- {
 		part := strings.TrimSpace(parts[index])

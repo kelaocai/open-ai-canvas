@@ -105,6 +105,16 @@ func TestEnrichAPICallLogPrefersNewAPIChannel2NestedTaskID(t *testing.T) {
 	}
 }
 
+func TestModelverseTaskLogKeepsTaskIDAcrossPolls(t *testing.T) {
+	for _, path := range []string{"/v1/tasks/submit", "/v1/tasks/status"} {
+		call := &model.ApiCallLog{Path: path}
+		(&Service{}).EnrichAPICallLog(call, []byte(`{"output":{"task_id":"mj-42","task_status":"Running"},"request_id":"trace-only"}`))
+		if call.ProviderRequestID != "mj-42" || call.ProviderStatus != "running" || providerRequestIDFromPath(path) != "" {
+			t.Fatalf("%s: task=%q status=%q", path, call.ProviderRequestID, call.ProviderStatus)
+		}
+	}
+}
+
 func TestEnrichAPICallLogKeepsUserFacingAndUpstreamFailureDetails(t *testing.T) {
 	log := &model.ApiCallLog{
 		Status:     model.ApiCallStatusFailed,

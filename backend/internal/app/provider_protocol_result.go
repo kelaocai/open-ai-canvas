@@ -4,6 +4,7 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"net"
@@ -46,7 +47,18 @@ func finishProtocolResult(ctx context.Context, config providerConfig, mode strin
 	var references []protocol.MediaReference
 	switch mode {
 	case "image":
-		references = result.Images
+		// 同一张内联图可能被 Gemini 兼容接口重复返回，入库和写 AIGC 标记前先去重。
+		seen := make(map[[32]byte]bool)
+		for _, reference := range result.Images {
+			if reference.DataURL != "" {
+				hash := sha256.Sum256([]byte(reference.DataURL))
+				if seen[hash] {
+					continue
+				}
+				seen[hash] = true
+			}
+			references = append(references, reference)
+		}
 	case "video":
 		references = result.Videos
 	case "audio":
