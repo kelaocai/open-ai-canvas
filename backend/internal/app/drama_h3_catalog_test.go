@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"yingce/backend/internal/model"
@@ -77,5 +78,32 @@ func TestDramaH3CatalogAcceptsRequiredReference(t *testing.T) {
 	}
 	if continuations == 0 {
 		t.Fatal("no first-frame continuation was submitted")
+	}
+}
+
+func TestDramaH3ReferenceOnlyChoiceSendsCastAndTail(t *testing.T) {
+	svc, fake := newDramaTestService(t)
+	video := dramaVideoFixture()
+	video.Operations = []string{"reference_to_video"}
+	video.DefaultOperation = "reference_to_video"
+	setDramaVideoCapability(t, svc, fake, video)
+	if err := fake.db.Model(&model.ChannelModel{}).Where("channel_id = ? AND model_key = ?", "ch", "video").Update("protocol", "walkingwithai-h3").Error; err != nil {
+		t.Fatal(err)
+	}
+	project := createTestDrama(t, svc, DramaReviewSample).Project.ID
+	runDramaTicks(t, svc, project, 24)
+	requests := dramaVideoRequests(fake)
+	if len(requests) < 2 {
+		t.Fatal("missing continuation")
+	}
+	req := requests[1]
+	refs := req.Input["referenceImages"].([]any)
+	if req.Operation != "reference_to_video" || len(refs) < 2 || refs[len(refs)-1].(map[string]any)["id"] != "first-frame" || !strings.Contains(req.Prompt, "定妆图为准") {
+		t.Fatalf("invalid continuity inputs: %+v", req)
+	}
+	for _, ref := range refs {
+		if ref.(map[string]any)["role"] != "reference_image" {
+			t.Fatal("unexpected fixed frame")
+		}
 	}
 }

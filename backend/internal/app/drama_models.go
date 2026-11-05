@@ -430,7 +430,10 @@ func (s *Service) dramaVideoProfile(choice DramaModelChoice) (dramaVideoProfile,
 	// 不声明同步生成声音的模型也可以用：段视频没有对白与音效，由用户在选模型时自行取舍。
 	profile := dramaVideoProfile{Durations: options, Operations: video.Operations, MaxImages: video.References.MaxImages, MaxAudios: max(video.References.MaxAudios, 0), MaxAudioSeconds: max(video.References.MaxAudioDuration, 0), GenerateAudio: video.GenerateAudio.Supported, PromptMaxChars: max(video.References.PromptMaxChars, 0), video: video}
 	profile.ContinuityAsReference = protocol == model.ChannelInterfaceMiniMaxVideo
-	profile.ContinuityFrameOnly = protocol == "walkingwithai-h3"
+	if protocol == "walkingwithai-h3" {
+		profile.ContinuityFrameOnly = profile.supports("image_to_video")
+		profile.ContinuityAsReference = !profile.ContinuityFrameOnly && profile.supports("reference_to_video")
+	}
 	if profile.maxSeconds() <= 0 {
 		return profile, errors.New("未声明可生成时长，无法按剧情段切分")
 	}

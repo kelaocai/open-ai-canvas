@@ -231,7 +231,7 @@ func (s *Service) prepareDramaSegment(settings DramaSettings, draft dramaSegment
 		if continuityRef != nil {
 			refs = append(refs, continuityRef)
 		}
-		header = append(header, "最后一张输入图片是上一段视频的尾帧，仅作衔接参考，不占上述角色、道具与场景参考图编号。请参考其人物位置、动作与光线衔接本段；正文中的首帧描述按衔接意图理解，不要求逐帧复现。")
+		header = append(header, "最后一张输入图片是上一段视频的尾帧，仅参考人物位置、动作方向与光线。人物五官、发型和服装以上述各自的角色定妆图为准；尾帧中模糊或未入镜的人物按对应定妆图呈现。正文中的首帧描述按衔接意图理解，不要求逐帧复现。")
 	}
 	audios, err := s.dramaSegmentAudioReferences(&request, profile, draft.shots, casts, len(refs) > 0)
 	if err != nil {
