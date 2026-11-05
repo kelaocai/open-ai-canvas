@@ -71,6 +71,10 @@ func (s *Service) requestProviderCancellation(ctx context.Context, task *model.T
 		}
 		return err
 	}
+	return s.sendClaimedProviderCancellation(ctx, task)
+}
+
+func (s *Service) sendClaimedProviderCancellation(ctx context.Context, task *model.Task) error {
 	if task.ProviderRequestID == "" {
 		return s.markProviderCancellationUncertain(task, "上游未返回任务 ID，无法发送取消请求，费用待核对")
 	}
@@ -189,6 +193,14 @@ func (s *Service) providerCancellationInput(task *model.Task) (canvasGenerationI
 	config, err := s.resolveProviderConfig(input.Config)
 	if err != nil {
 		return canvasGenerationInput{}, err
+	}
+	if task.CancellationSource == model.TaskCancellationDramaStop {
+		original, lookupErr := s.repo.TaskSubmitURL(task.UserID, task.ID)
+		submit, parseErr := url.Parse(original)
+		current, currentErr := url.Parse(config.BaseURL)
+		if lookupErr != nil || parseErr != nil || currentErr != nil || submit.Host == "" || !strings.EqualFold(submit.Host, current.Host) || !strings.EqualFold(submit.Scheme, current.Scheme) {
+			return canvasGenerationInput{}, errors.New("提交时的上游地址已变化或无法核验，本地已停止，原上游状态待核对")
+		}
 	}
 	input.Config = config
 	return input, nil

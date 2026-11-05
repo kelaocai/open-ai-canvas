@@ -239,6 +239,9 @@ func (r *dramaRun) syncRunningJob(job *model.DramaJob) error {
 		job.Status, job.FinishedAt, job.Error = model.DramaJobSucceeded, &now, ""
 		return r.s.repo.SaveDramaJob(job)
 	case model.TaskStatusFailed, model.TaskStatusCancelled:
+		if task.Status == model.TaskStatusCancelled && task.CancellationSource == model.TaskCancellationDramaStop {
+			return nil
+		}
 		if err := r.settleTaskAttempt(job, task, firstNonEmpty(task.Error, "生成失败")); err != nil {
 			return err
 		}

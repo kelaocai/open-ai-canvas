@@ -24,6 +24,7 @@ type Props = {
     keyboardEnabled: boolean;
     /** 打开剧情段弹窗；shotId 有值时定位到该镜头。 */
     onOpen: (segmentIndex: number, shotId?: string) => void;
+    onStop: (segment: DramaSegment) => void;
     onGenerate: (indexes: number[], model?: DramaModelChoice) => void;
     /** 重新处理已生成但后处理失败的段视频；reprocessing 是正在提交的段序号。 */
     onReprocess: (index: number) => void;
@@ -44,7 +45,7 @@ function generatable(segment: DramaSegment) {
 
 /** 本段已有生成好的视频（含过期或后处理失败的），不论能否直接用于下一段。 */
 function hasVideo(segment: DramaSegment) {
-    return Boolean(segment.videoResourceId) && (segment.videoStatus === "ready" || segment.videoStatus === "stale" || segment.videoStatus === "failed");
+    return Boolean(segment.videoResourceId) && (segment.videoStatus === "ready" || segment.videoStatus === "stale" || segment.videoStatus === "failed" || segment.videoStatus === "stopped");
 }
 
 /** 还没有尾帧缩略图时，用视频本身的开头画面作封面。 */
@@ -66,6 +67,7 @@ type CardActions = {
     toggle: (index: number) => void;
     selectRange: (from: number, to: number, additive: boolean) => void;
     onOpen: (segmentIndex: number, shotId?: string) => void;
+    onStop: (segment: DramaSegment) => void;
     onGenerate: (indexes: number[], model?: DramaModelChoice) => void;
     onReprocess: (index: number) => void;
 };
@@ -196,6 +198,19 @@ const SegmentCard = memo(function SegmentCard({ segment, segmentShots, aspectRat
                     {segment.videoModel?.label || defaultModelLabel || "默认视频模型"}
                 </span>
                 <span className="drama-sg-actions">
+                    {mediaBusy(segment.videoStatus) ? (
+                        <Button
+                            size="small"
+                            danger
+                            disabled={busy}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                act().onStop(segment);
+                            }}
+                        >
+                            停止生成
+                        </Button>
+                    ) : null}
                     {segment.videoReprocessable ? (
                         <Button size="small" type="primary" icon={<RotateCcw className="size-3" />} disabled={busy} loading={reprocessing} title="只重新处理已生成的视频，不重新生成、不扣费" onClick={() => act().onReprocess(segment.index)}>
                             重新处理
@@ -222,7 +237,7 @@ const SegmentCard = memo(function SegmentCard({ segment, segmentShots, aspectRat
  * 完整内容在剧情段弹窗里。
  * 选择：单击聚焦，⌘/Ctrl 单击切换选择，Shift 单击连选；快捷键见底部提示。
  */
-export function Storyboard({ shots, segments, aspectRatio, castById, defaultVideoModel, videoResolution, busy, keyboardEnabled, onOpen, onGenerate, onReprocess, reprocessing, onWritePrompts, empty }: Props) {
+export function Storyboard({ shots, segments, aspectRatio, castById, defaultVideoModel, videoResolution, busy, keyboardEnabled, onOpen, onGenerate, onStop, onReprocess, reprocessing, onWritePrompts, empty }: Props) {
     const [selected, setSelected] = useState<Set<number>>(new Set());
     const [focused, setFocused] = useState<number>();
     const [anchor, setAnchor] = useState<number>();
@@ -284,8 +299,8 @@ export function Storyboard({ shots, segments, aspectRatio, castById, defaultVide
         setAnchor(index);
     };
     // 卡片 memo 后通过引用读取最新回调与连选锚点，避免每次渲染传入新函数让 memo 失效。
-    const actions = useRef<CardActions>({ anchor, handleCardClick, toggle, selectRange, onOpen, onGenerate, onReprocess });
-    actions.current = { anchor, handleCardClick, toggle, selectRange, onOpen, onGenerate, onReprocess };
+    const actions = useRef<CardActions>({ anchor, handleCardClick, toggle, selectRange, onOpen, onGenerate, onStop, onReprocess });
+    actions.current = { anchor, handleCardClick, toggle, selectRange, onOpen, onGenerate, onStop, onReprocess };
 
     // 分镜页快捷键：⌘/Ctrl+A 全选，Esc 清空，J/K 或方向键切换聚焦，Shift+方向键连选，X 或空格切换选择，Enter 打开。
     useEffect(() => {

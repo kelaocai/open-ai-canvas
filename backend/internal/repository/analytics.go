@@ -304,6 +304,12 @@ func (r *Repository) LatestAPICallForTask(taskID string) (model.ApiCallLog, erro
 	return log, err
 }
 
+func (r *Repository) TaskSubmitURL(userID, taskID string) (string, error) {
+	var row model.ApiCallLog
+	err := r.db.Select("upstream_url").Where("user_id = ? AND task_id = ? AND request_kind = ? AND upstream_url <> ''", userID, taskID, "create").Order("created_at DESC").First(&row).Error
+	return row.UpstreamURL, err
+}
+
 // LatestAPICallStatusForTask 返回任务最近一次上游调用的 HTTP 状态码；
 // 任务没收到任何上游响应（例如网络错误）时返回 0。
 func (r *Repository) LatestAPICallStatusForTask(taskID string) (int, error) {

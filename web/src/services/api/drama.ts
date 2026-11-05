@@ -125,7 +125,7 @@ export type DramaEpisodeMode = "auto" | "chapter";
 
 export type DramaEpisodeStage = "queued" | "script" | "prompts" | "review" | "video" | "render" | "done";
 
-export type DramaMediaStatus = "" | "queued" | "running" | "ready" | "failed" | "stale" | "skipped";
+export type DramaMediaStatus = "" | "queued" | "running" | "ready" | "failed" | "stale" | "skipped" | "stopped";
 
 export type DramaProductionView = {
     status: DramaStatus;
@@ -530,6 +530,15 @@ export function listDramaJobs(projectId: string, limit = 60, signal?: AbortSigna
 
 export function getDramaJob(projectId: string, jobId: string, signal?: AbortSignal) {
     return http.get<DramaJobDetail>(`${base(projectId)}/jobs/${encodeURIComponent(jobId)}`, { signal });
+}
+
+export function stopDramaSegmentVideo(projectId: string, episodeId: string, segment: DramaSegment) {
+    const job = segment.videoJob;
+    return http.post<{ message: string }>(`${base(projectId)}/episodes/${encodeURIComponent(episodeId)}/segments/stop`, {
+        segmentId: segment.id,
+        revision: segment.revision,
+        jobId: job && (job.status === "running" || job.status === "queued") ? job.id : "",
+    });
 }
 
 export function getDramaChapter(projectId: string, chapterId: string, signal?: AbortSignal) {

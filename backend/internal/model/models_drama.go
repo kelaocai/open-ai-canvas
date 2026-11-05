@@ -37,6 +37,7 @@ const (
 	DramaMediaFailed  = "failed"
 	DramaMediaStale   = "stale"
 	DramaMediaSkipped = "skipped"
+	DramaMediaStopped = "stopped"
 
 	DramaJobQueued    = "queued"
 	DramaJobRunning   = "running"

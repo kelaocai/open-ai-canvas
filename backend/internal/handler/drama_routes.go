@@ -165,6 +165,21 @@ func registerDramaRoutes(r *gin.RouterGroup, svc *service.Service) {
 	r.POST("/dramas/:id/episodes/:episodeId/rescript", dramaRoute(svc, 0, func(c *gin.Context, userID string) (any, error) {
 		return svc.RescriptDramaEpisode(userID, c.Param("id"), c.Param("episodeId"))
 	}))
+	r.POST("/dramas/:id/episodes/:episodeId/segments/stop", dramaRoute(svc, 4<<10, func(c *gin.Context, userID string) (any, error) {
+		var req struct {
+			Revision  *int64 `json:"revision"`
+			JobID     string `json:"jobId"`
+			SegmentID string `json:"segmentId"`
+		}
+		if err := bindDramaJSON(c, &req); err != nil {
+			return nil, err
+		}
+		if req.Revision == nil {
+			return nil, service.BadAuthRequest("请提供剧情段版本")
+		}
+		message, err := svc.StopDramaSegmentVideo(userID, c.Param("id"), c.Param("episodeId"), req.SegmentID, req.JobID, *req.Revision)
+		return gin.H{"message": message}, err
+	}))
 	r.POST("/dramas/:id/episodes/:episodeId/segments/generate", dramaRoute(svc, 16<<10, func(c *gin.Context, userID string) (any, error) {
 		var req service.GenerateDramaSegmentsRequest
 		if err := bindDramaJSON(c, &req); err != nil {

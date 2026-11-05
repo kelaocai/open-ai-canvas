@@ -21,6 +21,7 @@ export function videoWaitLabel(wait: string) {
 
 /** 剧情段当前处于哪一步，以及用户下一步该做什么。detail 是需要悬停查看的完整原因。 */
 export function segmentState(segment: DramaSegment): { tone: SegmentTone; label: string; detail?: string } {
+    if (segment.videoStatus === "stopped") return { tone: "idle", label: "已停止" };
     const writing = segment.promptStatus === "queued" || segment.promptStatus === "running";
     if (segment.promptStatus === "failed") return { tone: "failed", label: "提示词撰写失败" };
     // 视频已入库但尾帧等后处理失败：视频本身可看，重试只重新处理已有视频。
@@ -65,7 +66,7 @@ export function SegmentStatus({ segment }: { segment: DramaSegment }) {
 }
 
 export function SegmentVideo({ segment, aspectRatio, className = "" }: { segment: DramaSegment; aspectRatio: string; className?: string }) {
-    const viewable = segment.videoStatus === "ready" || segment.videoStatus === "stale" || segment.videoStatus === "failed";
+    const viewable = segment.videoStatus === "ready" || segment.videoStatus === "stale" || segment.videoStatus === "failed" || segment.videoStatus === "stopped";
     const url = useResourceMediaUrl(viewable ? segment.videoResourceId : undefined, "playback");
     const state = segmentState(segment);
     return (

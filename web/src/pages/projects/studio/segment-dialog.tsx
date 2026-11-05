@@ -57,6 +57,7 @@ type Props = {
     /** 指定本段参考图；null 恢复按镜头自动取。 */
     onSaveReferences: (segment: DramaSegment, castIds: string[] | null) => void;
     onWritePrompt: (segment: DramaSegment) => void;
+    onStop: (segment: DramaSegment) => void;
     onGenerate: (segment: DramaSegment, model?: DramaModelChoice) => void;
     reprocessing: boolean;
     onReprocess: (segment: DramaSegment) => void;
@@ -94,6 +95,7 @@ export function SegmentDialog({
     onSaveReferences,
     onWritePrompt,
     onGenerate,
+    onStop,
     onReprocess,
     onOpenCast,
     onOpenCanvas,
@@ -152,6 +154,7 @@ export function SegmentDialog({
                                 writing={writing}
                                 defaultVideoModel={defaultVideoModel}
                                 videoResolution={videoResolution}
+                                onStop={() => onStop(segment)}
                                 onGenerate={(model) => onGenerate(segment, model)}
                                 onWritePrompt={() => onWritePrompt(segment)}
                             />
@@ -239,6 +242,7 @@ function SegmentToolbar({
     defaultVideoModel,
     videoResolution,
     onGenerate,
+    onStop,
     onWritePrompt,
 }: {
     segment: DramaSegment;
@@ -247,6 +251,7 @@ function SegmentToolbar({
     writing: boolean;
     defaultVideoModel: DramaModelChoice;
     videoResolution?: string;
+    onStop: () => void;
     onGenerate: (model?: DramaModelChoice) => void;
     onWritePrompt: () => void;
 }) {
@@ -300,6 +305,11 @@ function SegmentToolbar({
                     复制发送全文
                 </Button>
                 <span className="drama-sdx-spacer" />
+                {running ? (
+                    <Button size="small" danger disabled={busy} onClick={onStop}>
+                        停止生成
+                    </Button>
+                ) : null}
                 <Button
                     type="primary"
                     size="small"

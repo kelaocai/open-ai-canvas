@@ -20,6 +20,7 @@ import {
     rescriptDramaEpisode,
     retryFailedDrama,
     startDrama,
+    stopDramaSegmentVideo,
     updateDramaSegment,
     updateDramaSegmentReferences,
     writeDramaSegmentPrompts,
@@ -192,6 +193,14 @@ export default function DramaStudioPage() {
         },
         onError: (error) => errorMessage(error, "生成失败"),
     });
+    const stopSegment = useMutation({
+        mutationFn: (segment: DramaSegment) => stopDramaSegmentVideo(projectId, episodeId, segment),
+        onSuccess: (result) => {
+            message.success(result.message);
+        },
+        onError: (error) => errorMessage(error, "停止生成失败"),
+        onSettled: () => invalidate(episodeId),
+    });
     const reprocessSegment = useMutation({
         mutationFn: (segmentIndex: number) => reprocessDramaSegmentVideo(projectId, episodeId, segmentIndex),
         onSuccess: (_, segmentIndex) => {
@@ -267,7 +276,7 @@ export default function DramaStudioPage() {
         },
         onError: (error) => errorMessage(error, "重命名失败"),
     });
-    const busy = approve.isPending || rescript.isPending || generateSegments.isPending || release.isPending || insertShot.isPending || removeShot.isPending || saveReferences.isPending;
+    const busy = stopSegment.isPending || approve.isPending || rescript.isPending || generateSegments.isPending || release.isPending || insertShot.isPending || removeShot.isPending || saveReferences.isPending;
 
     const openInbox = (item: DramaInboxItem) => {
         if (item.castId) {
@@ -620,6 +629,7 @@ export default function DramaStudioPage() {
                                         keyboardEnabled={openSegmentIndex === undefined && view === "production"}
                                         onOpen={openSegment}
                                         onGenerate={(segments, videoModel) => generateSegments.mutate({ segments, videoModel })}
+                                        onStop={(segment) => stopSegment.mutate(segment)}
                                         onReprocess={(index) => reprocessSegment.mutate(index)}
                                         reprocessing={reprocessSegment.isPending ? reprocessSegment.variables : undefined}
                                         onWritePrompts={(indexes) => writeSegment.mutate(indexes)}
@@ -673,6 +683,7 @@ export default function DramaStudioPage() {
                             onWritePrompt={(segment) => writeSegment.mutate([segment.index])}
                             onGenerate={(segment, videoModel) => generateSegments.mutate({ segments: [segment.index], videoModel })}
                             reprocessing={reprocessSegment.isPending}
+                            onStop={(segment) => stopSegment.mutate(segment)}
                             onReprocess={(segment) => reprocessSegment.mutate(segment.index)}
                             defaultVideoModel={production.settings.models.video}
                             videoResolution={production.settings.videoResolution}

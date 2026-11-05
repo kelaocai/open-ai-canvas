@@ -17,6 +17,18 @@ import (
 // ErrDramaPlanPending 表示还有章节在等待分集规划，此时不能逐集追加。
 var ErrDramaPlanPending = errors.New("drama plan pending")
 
+func (r *Repository) StopDramaVideoSlot(projectID, episodeID, segmentID string, revision int64) (bool, error) {
+	result := r.db.Model(&model.DramaSegment{}).Where("project_id = ? AND episode_id = ? AND id = ? AND revision = ? AND video_status IN ?", projectID, episodeID, segmentID, revision, []string{model.DramaMediaRunning, model.DramaMediaQueued}).
+		Updates(map[string]any{"video_status": model.DramaMediaStopped, "video_error": "", "updated_at": time.Now()})
+	return result.RowsAffected == 1, result.Error
+}
+
+func (r *Repository) ActiveDramaVideoJobs(projectID, episodeID, segmentID string) ([]model.DramaJob, error) {
+	var jobs []model.DramaJob
+	err := r.db.Where("project_id = ? AND episode_id = ? AND shot_id = ? AND kind = ? AND status IN ?", projectID, episodeID, segmentID, model.DramaJobSegmentVideo, []string{model.DramaJobQueued, model.DramaJobRunning}).Find(&jobs).Error
+	return jobs, err
+}
+
 func (r *Repository) DramaProduction(projectID string) (*model.DramaProduction, error) {
 	var production model.DramaProduction
 	if err := r.db.First(&production, "project_id = ?", projectID).Error; err != nil {
