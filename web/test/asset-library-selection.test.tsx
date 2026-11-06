@@ -2,12 +2,25 @@ import { describe, expect, mock, test } from "bun:test";
 import type { MouseEvent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AssetCard, AssetCover } from "@/pages/assets/asset-library-cards";
-import { AssetsBatchBar } from "@/pages/assets/asset-library-panels";
+import { AssetImageZoom, AssetsBatchBar } from "@/pages/assets/asset-library-panels";
 import { selectAssetIds } from "@/pages/assets/asset-library-selection";
 import type { Asset } from "@/stores/use-asset-store";
 
 const asset: Asset = { id: "remote-page-2", kind: "text", title: "第二页素材", coverUrl: "", tags: [], createdAt: "2026-10-01", updatedAt: "2026-10-01", data: { content: "正文" } };
 const click = (keys: Partial<MouseEvent<HTMLButtonElement>> = {}) => ({ shiftKey: false, ctrlKey: false, metaKey: false, ...keys }) as MouseEvent<HTMLButtonElement>;
+
+test("素材详情通过资源组件解析原图，不直接渲染过期签名地址", () => {
+    const image = {
+        ...asset,
+        kind: "image" as const,
+        coverUrl: "https://old.example/expired-cover.png",
+        data: { dataUrl: "https://old.example/expired-original.png", storageKey: "resource:detail-image", width: 1024, height: 1024, bytes: 100, mimeType: "image/png" },
+    };
+    const html = renderToStaticMarkup(<AssetImageZoom asset={image} />);
+    expect(html).toContain("cached-resource-image-shell");
+    expect(html).not.toContain("https://old.example/");
+    expect(html).toContain('aria-label="放大"');
+});
 
 function card(selected: boolean, selectionMode: boolean) {
     const onSelect = mock(() => {});
