@@ -28,7 +28,9 @@ trap 'rm -rf "$stage"' EXIT
 docker save "$backend" "$web" "$agent" | tar -xf - -C "$stage"
 ssh "$target" "mkdir -p '$remote/.image-transfer'"
 # Docker archives use content-addressed layer names. rsync reuses unchanged files.
-rsync -az --delete --stats "$stage/" "$target:$remote/.image-transfer/"
+# Docker archive metadata can retain identical sizes and timestamps across tags.
+# Compare contents so a new manifest is never skipped by rsync's quick check.
+rsync -az --checksum --delete --stats "$stage/" "$target:$remote/.image-transfer/"
 scp docker-compose.external.yml "$target:$remote/compose.yaml"
 scp scripts/deploy-local.py "$target:$remote/deploy-local.py"
 ssh "$target" "set -eu; /usr/bin/tar -cf - -C '$remote/.image-transfer' . | /usr/local/bin/docker load; /usr/bin/python3 '$remote/deploy-local.py' '$sha'"
