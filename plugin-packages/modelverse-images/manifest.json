@@ -1,0 +1,414 @@
+{
+  "apiVersion": "yingce.plugin/v2",
+  "id": "modelverse-images",
+  "name": "Modelverse Images",
+  "version": "1.0.1",
+  "author": "RightMovie",
+  "description": "Modelverse 图片协议，编辑按官方接口使用 multipart image 文件。",
+  "permissions": [
+    "generation.run",
+    "media.read"
+  ],
+  "configuration": {
+    "fields": [
+      {
+        "name": "apiKey",
+        "type": "secret",
+        "label": "API Key",
+        "required": true
+      }
+    ]
+  },
+  "contributes": {
+    "providers": [
+      {
+        "id": "modelverse-image",
+        "label": "Modelverse Images",
+        "capabilities": [
+          "image"
+        ],
+        "scopes": [
+          "admin.system-channel",
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "https://api.modelverse.cn",
+        "requiresPublicMediaUrls": false,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "imageParameters": [
+          {
+            "name": "size",
+            "label": "画幅 / 尺寸",
+            "type": "string",
+            "binding": "aspectRatio",
+            "encoding": "pixels",
+            "pricing": true
+          },
+          {
+            "name": "imageResolution",
+            "label": "分辨率",
+            "type": "string",
+            "binding": "resolution",
+            "enabled": false,
+            "pricing": true
+          },
+          {
+            "name": "quality",
+            "label": "图片质量",
+            "type": "string",
+            "binding": "quality",
+            "pricing": true
+          },
+          {
+            "name": "count",
+            "label": "生成数量",
+            "type": "integer",
+            "binding": "imageCount",
+            "min": 1,
+            "max": 100,
+            "step": 1,
+            "default": 1
+          },
+          {
+            "name": "transparentBackground",
+            "label": "透明背景",
+            "type": "boolean",
+            "binding": "transparentBackground",
+            "default": false,
+            "enabled": false
+          },
+          {
+            "name": "outputFormat",
+            "label": "输出格式",
+            "type": "string",
+            "binding": "providerOptions.modelverse-image.output_format",
+            "values": [
+              "png",
+              "jpeg",
+              "webp"
+            ],
+            "default": "png",
+            "enabled": false
+          },
+          {
+            "name": "outputCompression",
+            "label": "压缩质量",
+            "type": "integer",
+            "binding": "providerOptions.modelverse-image.output_compression",
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "enabled": false
+          }
+        ],
+        "parameters": [
+          {
+            "name": "model",
+            "type": "string",
+            "required": true,
+            "mapping": "model",
+            "description": "图片模型 ID。"
+          },
+          {
+            "name": "prompt",
+            "type": "string",
+            "required": true,
+            "mapping": "prompt",
+            "description": "图片提示词。"
+          },
+          {
+            "name": "images",
+            "type": "media[]",
+            "required": false,
+            "mapping": "provider image/reference fields",
+            "description": "参考图或编辑源图，role 由业务层确定。"
+          },
+          {
+            "name": "imageCount",
+            "type": "integer",
+            "required": false,
+            "mapping": "n/sample_count",
+            "description": "输出数量。"
+          },
+          {
+            "name": "aspectRatio",
+            "type": "string",
+            "required": false,
+            "mapping": "size/aspect_ratio",
+            "description": "比例或尺寸，语义按协议说明。"
+          },
+          {
+            "name": "resolution",
+            "type": "string",
+            "required": false,
+            "mapping": "resolution/imageSize",
+            "description": "分辨率档位。"
+          },
+          {
+            "name": "quality",
+            "type": "string",
+            "required": false,
+            "mapping": "quality",
+            "description": "质量档位。"
+          },
+          {
+            "name": "providerOptions",
+            "type": "object",
+            "required": false,
+            "mapping": "provider-specific fields",
+            "description": "插件命名空间内的厂商扩展字段。"
+          }
+        ],
+        "create": {
+          "method": "POST",
+          "path": "/v1/images/generations",
+          "pathTemplate": {
+            "$if": {
+              "condition": {
+                "$gt": [
+                  {
+                    "$len": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  0
+                ]
+              },
+              "then": "/v1/images/edits",
+              "else": "/v1/images/generations"
+            }
+          },
+          "contentType": "application/json",
+          "body": {
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "n": {
+              "$omitEmpty": {
+                "$if": {
+                  "condition": {
+                    "$gt": [
+                      {
+                        "$ref": "request.imageCount"
+                      },
+                      0
+                    ]
+                  },
+                  "then": {
+                    "$ref": "request.imageCount"
+                  },
+                  "else": 1
+                }
+              }
+            },
+            "size": {
+              "$omitEmpty": {
+                "$if": {
+                  "condition": {
+                    "$in": [
+                      {
+                        "$lower": {
+                          "$trim": {
+                            "$ref": "request.aspectRatio"
+                          }
+                        }
+                      },
+                      [
+                        "",
+                        "auto"
+                      ]
+                    ]
+                  },
+                  "then": null,
+                  "else": {
+                    "$ref": "request.aspectRatio"
+                  }
+                }
+              }
+            },
+            "resolution": {
+              "$omitEmpty": {
+                "$ref": "request.resolution"
+              }
+            },
+            "quality": {
+              "$omitEmpty": {
+                "$if": {
+                  "condition": {
+                    "$in": [
+                      {
+                        "$lower": {
+                          "$trim": {
+                            "$ref": "request.quality"
+                          }
+                        }
+                      },
+                      [
+                        "",
+                        "auto"
+                      ]
+                    ]
+                  },
+                  "then": null,
+                  "else": {
+                    "$ref": "request.quality"
+                  }
+                }
+              }
+            },
+            "background": {
+              "$omitEmpty": {
+                "$coalesce": [
+                  {
+                    "$ref": "request.providerOptions.modelverse-image.background"
+                  },
+                  {
+                    "$if": {
+                      "condition": {
+                        "$eq": [
+                          {
+                            "$ref": "request.extra.transparentBackground"
+                          },
+                          "true"
+                        ]
+                      },
+                      "then": "transparent",
+                      "else": null
+                    }
+                  }
+                ]
+              }
+            },
+            "output_format": {
+              "$omitEmpty": {
+                "$coalesce": [
+                  {
+                    "$ref": "request.providerOptions.modelverse-image.output_format"
+                  },
+                  "png"
+                ]
+              }
+            },
+            "output_compression": {
+              "$omitEmpty": {
+                "$ref": "request.providerOptions.modelverse-image.output_compression"
+              }
+            },
+            "moderation": {
+              "$omitEmpty": {
+                "$ref": "request.providerOptions.modelverse-image.moderation"
+              }
+            },
+            "response_format": {
+              "$omitEmpty": {
+                "$ref": "request.providerOptions.modelverse-image.response_format"
+              }
+            },
+            "style": {
+              "$omitEmpty": {
+                "$ref": "request.providerOptions.modelverse-image.style"
+              }
+            },
+            "user": {
+              "$omitEmpty": {
+                "$ref": "request.providerOptions.modelverse-image.user"
+              }
+            }
+          },
+          "contentTypeTemplate": {
+            "$if": {
+              "condition": {
+                "$gt": [
+                  {
+                    "$len": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  0
+                ]
+              },
+              "then": "multipart/form-data",
+              "else": "application/json"
+            }
+          },
+          "files": [
+            {
+              "name": "image",
+              "source": {
+                "$filter": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  "as": "media",
+                  "where": {
+                    "$ne": [
+                      {
+                        "$ref": "media.role"
+                      },
+                      "mask"
+                    ]
+                  }
+                }
+              },
+              "filename": "source.png"
+            }
+          ]
+        },
+        "response": {
+          "status": "succeeded",
+          "images": {
+            "$map": {
+              "from": {
+                "$ref": "response.data"
+              },
+              "as": "item",
+              "in": {
+                "url": {
+                  "$omitEmpty": {
+                    "$ref": "item.url"
+                  }
+                },
+                "dataUrl": {
+                  "$if": {
+                    "condition": {
+                      "$ref": "item.b64_json"
+                    },
+                    "then": {
+                      "$concat": [
+                        "data:image/png;base64,",
+                        {
+                          "$ref": "item.b64_json"
+                        }
+                      ]
+                    },
+                    "else": null
+                  }
+                }
+              }
+            }
+          },
+          "usage": {
+            "$ref": "response.usage"
+          },
+          "errorPaths": [
+            "error.code"
+          ],
+          "messagePaths": [
+            "error.message"
+          ]
+        }
+      }
+    ]
+  },
+  "documentation": "# Modelverse Images\n\n星图 Modelverse 图片生成与编辑协议。Provider ID 为 `modelverse-image`。\n\n无参考图调用 `/v1/images/generations`；有参考图调用 `/v1/images/edits`，使用 multipart/form-data 的 image 文件字段。宿主解析 URL 和内联 data URL 后上传文件，排除 mask。当前协议不发送蒙版，不自动重试付费请求。\n\n本协议独立于 OpenAI Images，渠道需要显式选择此协议。切换后核对参考图上限和图生图价格档。\n\n---\n\n# 接口合同\n\n- 默认地址：`https://api.modelverse.cn`，Bearer 鉴权。\n- 图片编辑：`POST /v1/images/edits`，`Content-Type: multipart/form-data`，参考图上传至 `image` 文件字段，不发送 JSON images。排除 mask 引用。\n- 官方接口依据：https://github.com/UCloudDoc-Team/modelverse/blob/master/api_doc/image_api/gpt-image-1.5.md 。GPT Image 2 使用相同编辑入口，需以真实任务验收。\n- 文生图：`POST /v1/images/generations`，不发送空的 `images`。\n- 保留 model、prompt、n、size、quality 等参数映射，返回 data 中的 URL 或 Base64 图片。\n- 不支持蒙版编辑；不得为本协议打开 mask 能力。\n\n<!-- YINGCE_MANIFEST_CONTRACT_START -->\n## Manifest 完整接口定义\n\n以下 JSON 与插件包内实际 `manifest.json` 逐字段一致，覆盖插件身份、权限、配置、鉴权、参数、校验、创建、Agent、查询、取消、结果下载、响应和 Agent 响应映射。`documentation` 字段的值就是当前完整文档；为避免文档在自身内部无限递归，JSON 中仅用等义占位文本表示正文。\n\n```json\n{\n  \"apiVersion\": \"yingce.plugin/v2\",\n  \"id\": \"modelverse-images\",\n  \"name\": \"Modelverse Images\",\n  \"version\": \"1.0.1\",\n  \"author\": \"RightMovie\",\n  \"description\": \"Modelverse 图片协议，编辑按官方接口使用 multipart image 文件。\",\n  \"permissions\": [\n    \"generation.run\",\n    \"media.read\"\n  ],\n  \"configuration\": {\n    \"fields\": [\n      {\n        \"name\": \"apiKey\",\n        \"type\": \"secret\",\n        \"label\": \"API Key\",\n        \"required\": true\n      }\n    ]\n  },\n  \"contributes\": {\n    \"providers\": [\n      {\n        \"id\": \"modelverse-image\",\n        \"label\": \"Modelverse Images\",\n        \"capabilities\": [\n          \"image\"\n        ],\n        \"scopes\": [\n          \"admin.system-channel\",\n          \"user.custom-channel\",\n          \"canvas\",\n          \"creation\",\n          \"agent\"\n        ],\n        \"baseUrl\": \"https://api.modelverse.cn\",\n        \"requiresPublicMediaUrls\": false,\n        \"auth\": {\n          \"type\": \"bearer\",\n          \"field\": \"apiKey\"\n        },\n        \"imageParameters\": [\n          {\n            \"name\": \"size\",\n            \"label\": \"画幅 / 尺寸\",\n            \"type\": \"string\",\n            \"binding\": \"aspectRatio\",\n            \"encoding\": \"pixels\",\n            \"pricing\": true\n          },\n          {\n            \"name\": \"imageResolution\",\n            \"label\": \"分辨率\",\n            \"type\": \"string\",\n            \"binding\": \"resolution\",\n            \"enabled\": false,\n            \"pricing\": true\n          },\n          {\n            \"name\": \"quality\",\n            \"label\": \"图片质量\",\n            \"type\": \"string\",\n            \"binding\": \"quality\",\n            \"pricing\": true\n          },\n          {\n            \"name\": \"count\",\n            \"label\": \"生成数量\",\n            \"type\": \"integer\",\n            \"binding\": \"imageCount\",\n            \"min\": 1,\n            \"max\": 100,\n            \"step\": 1,\n            \"default\": 1\n          },\n          {\n            \"name\": \"transparentBackground\",\n            \"label\": \"透明背景\",\n            \"type\": \"boolean\",\n            \"binding\": \"transparentBackground\",\n            \"default\": false,\n            \"enabled\": false\n          },\n          {\n            \"name\": \"outputFormat\",\n            \"label\": \"输出格式\",\n            \"type\": \"string\",\n            \"binding\": \"providerOptions.modelverse-image.output_format\",\n            \"values\": [\n              \"png\",\n              \"jpeg\",\n              \"webp\"\n            ],\n            \"default\": \"png\",\n            \"enabled\": false\n          },\n          {\n            \"name\": \"outputCompression\",\n            \"label\": \"压缩质量\",\n            \"type\": \"integer\",\n            \"binding\": \"providerOptions.modelverse-image.output_compression\",\n            \"min\": 0,\n            \"max\": 100,\n            \"step\": 1,\n            \"enabled\": false\n          }\n        ],\n        \"parameters\": [\n          {\n            \"name\": \"model\",\n            \"type\": \"string\",\n            \"required\": true,\n            \"mapping\": \"model\",\n            \"description\": \"图片模型 ID。\"\n          },\n          {\n            \"name\": \"prompt\",\n            \"type\": \"string\",\n            \"required\": true,\n            \"mapping\": \"prompt\",\n            \"description\": \"图片提示词。\"\n          },\n          {\n            \"name\": \"images\",\n            \"type\": \"media[]\",\n            \"required\": false,\n            \"mapping\": \"provider image/reference fields\",\n            \"description\": \"参考图或编辑源图，role 由业务层确定。\"\n          },\n          {\n            \"name\": \"imageCount\",\n            \"type\": \"integer\",\n            \"required\": false,\n            \"mapping\": \"n/sample_count\",\n            \"description\": \"输出数量。\"\n          },\n          {\n            \"name\": \"aspectRatio\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"size/aspect_ratio\",\n            \"description\": \"比例或尺寸，语义按协议说明。\"\n          },\n          {\n            \"name\": \"resolution\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"resolution/imageSize\",\n            \"description\": \"分辨率档位。\"\n          },\n          {\n            \"name\": \"quality\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"quality\",\n            \"description\": \"质量档位。\"\n          },\n          {\n            \"name\": \"providerOptions\",\n            \"type\": \"object\",\n            \"required\": false,\n            \"mapping\": \"provider-specific fields\",\n            \"description\": \"插件命名空间内的厂商扩展字段。\"\n          }\n        ],\n        \"create\": {\n          \"method\": \"POST\",\n          \"path\": \"/v1/images/generations\",\n          \"pathTemplate\": {\n            \"$if\": {\n              \"condition\": {\n                \"$gt\": [\n                  {\n                    \"$len\": {\n                      \"$ref\": \"request.images\"\n                    }\n                  },\n                  0\n                ]\n              },\n              \"then\": \"/v1/images/edits\",\n              \"else\": \"/v1/images/generations\"\n            }\n          },\n          \"contentType\": \"application/json\",\n          \"body\": {\n            \"model\": {\n              \"$ref\": \"request.model\"\n            },\n            \"prompt\": {\n              \"$ref\": \"request.prompt\"\n            },\n            \"n\": {\n              \"$omitEmpty\": {\n                \"$if\": {\n                  \"condition\": {\n                    \"$gt\": [\n                      {\n                        \"$ref\": \"request.imageCount\"\n                      },\n                      0\n                    ]\n                  },\n                  \"then\": {\n                    \"$ref\": \"request.imageCount\"\n                  },\n                  \"else\": 1\n                }\n              }\n            },\n            \"size\": {\n              \"$omitEmpty\": {\n                \"$if\": {\n                  \"condition\": {\n                    \"$in\": [\n                      {\n                        \"$lower\": {\n                          \"$trim\": {\n                            \"$ref\": \"request.aspectRatio\"\n                          }\n                        }\n                      },\n                      [\n                        \"\",\n                        \"auto\"\n                      ]\n                    ]\n                  },\n                  \"then\": null,\n                  \"else\": {\n                    \"$ref\": \"request.aspectRatio\"\n                  }\n                }\n              }\n            },\n            \"resolution\": {\n              \"$omitEmpty\": {\n                \"$ref\": \"request.resolution\"\n              }\n            },\n            \"quality\": {\n              \"$omitEmpty\": {\n                \"$if\": {\n                  \"condition\": {\n                    \"$in\": [\n                      {\n                        \"$lower\": {\n                          \"$trim\": {\n                            \"$ref\": \"request.quality\"\n                          }\n                        }\n                      },\n                      [\n                        \"\",\n                        \"auto\"\n                      ]\n                    ]\n                  },\n                  \"then\": null,\n                  \"else\": {\n                    \"$ref\": \"request.quality\"\n                  }\n                }\n              }\n            },\n            \"background\": {\n              \"$omitEmpty\": {\n                \"$coalesce\": [\n                  {\n                    \"$ref\": \"request.providerOptions.modelverse-image.background\"\n                  },\n                  {\n                    \"$if\": {\n                      \"condition\": {\n                        \"$eq\": [\n                          {\n                            \"$ref\": \"request.extra.transparentBackground\"\n                          },\n                          \"true\"\n                        ]\n                      },\n                      \"then\": \"transparent\",\n                      \"else\": null\n                    }\n                  }\n                ]\n              }\n            },\n            \"output_format\": {\n              \"$omitEmpty\": {\n                \"$coalesce\": [\n                  {\n                    \"$ref\": \"request.providerOptions.modelverse-image.output_format\"\n                  },\n                  \"png\"\n                ]\n              }\n            },\n            \"output_compression\": {\n              \"$omitEmpty\": {\n                \"$ref\": \"request.providerOptions.modelverse-image.output_compression\"\n              }\n            },\n            \"moderation\": {\n              \"$omitEmpty\": {\n                \"$ref\": \"request.providerOptions.modelverse-image.moderation\"\n              }\n            },\n            \"response_format\": {\n              \"$omitEmpty\": {\n                \"$ref\": \"request.providerOptions.modelverse-image.response_format\"\n              }\n            },\n            \"style\": {\n              \"$omitEmpty\": {\n                \"$ref\": \"request.providerOptions.modelverse-image.style\"\n              }\n            },\n            \"user\": {\n              \"$omitEmpty\": {\n                \"$ref\": \"request.providerOptions.modelverse-image.user\"\n              }\n            }\n          },\n          \"contentTypeTemplate\": {\n            \"$if\": {\n              \"condition\": {\n                \"$gt\": [\n                  {\n                    \"$len\": {\n                      \"$ref\": \"request.images\"\n                    }\n                  },\n                  0\n                ]\n              },\n              \"then\": \"multipart/form-data\",\n              \"else\": \"application/json\"\n            }\n          },\n          \"files\": [\n            {\n              \"name\": \"image\",\n              \"source\": {\n                \"$filter\": {\n                  \"from\": {\n                    \"$sortByOrder\": {\n                      \"$ref\": \"request.images\"\n                    }\n                  },\n                  \"as\": \"media\",\n                  \"where\": {\n                    \"$ne\": [\n                      {\n                        \"$ref\": \"media.role\"\n                      },\n                      \"mask\"\n                    ]\n                  }\n                }\n              },\n              \"filename\": \"source.png\"\n            }\n          ]\n        },\n        \"response\": {\n          \"status\": \"succeeded\",\n          \"images\": {\n            \"$map\": {\n              \"from\": {\n                \"$ref\": \"response.data\"\n              },\n              \"as\": \"item\",\n              \"in\": {\n                \"url\": {\n                  \"$omitEmpty\": {\n                    \"$ref\": \"item.url\"\n                  }\n                },\n                \"dataUrl\": {\n                  \"$if\": {\n                    \"condition\": {\n                      \"$ref\": \"item.b64_json\"\n                    },\n                    \"then\": {\n                      \"$concat\": [\n                        \"data:image/png;base64,\",\n                        {\n                          \"$ref\": \"item.b64_json\"\n                        }\n                      ]\n                    },\n                    \"else\": null\n                  }\n                }\n              }\n            }\n          },\n          \"usage\": {\n            \"$ref\": \"response.usage\"\n          },\n          \"errorPaths\": [\n            \"error.code\"\n          ],\n          \"messagePaths\": [\n            \"error.message\"\n          ]\n        }\n      }\n    ]\n  },\n  \"documentation\": \"<当前插件的完整 documentation，由 README.md 与 docs/interface.md 拼接而成；为避免 JSON 递归，此处不重复展开正文。>\"\n}\n```\n<!-- YINGCE_MANIFEST_CONTRACT_END -->\n"
+}
