@@ -13,6 +13,7 @@
     "channel-pricing",
     "admin-mcp",
     "macmini-deployment",
+    "ecs-deployment",
     "qiniu-private-media",
     "credit-rewards",
     "task-runtime-stability",
