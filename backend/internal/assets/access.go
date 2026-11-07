@@ -169,6 +169,10 @@ func ResolveAccess(resource *model.Resource, setting storage.Settings, options A
 		}
 		access.URL, err = storage.SignedOriginObjectDownloadURL(setting, resource.ObjectKey, expires, options.DownloadName)
 		access.Delivery = DeliveryOrigin
+	} else if options.Purpose == PurposeProvider && !setting.Delivery.RequireCDN && storage.PublicOrigin(setting) {
+		// 模型由上游机房拉取素材；公开源站的签名直链避免海外 CDN 绕路和边缘节点超时。
+		access.URL, err = storage.SignedOriginObjectURL(setting, resource.ObjectKey, expires)
+		access.Delivery = DeliveryOrigin
 	} else if storage.CDNEnabled(setting) {
 		access.URL, err = storage.SignCDNURL(setting, resource.ObjectKey, expires)
 		access.Delivery = DeliveryCDN

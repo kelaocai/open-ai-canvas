@@ -55,6 +55,29 @@ func TestResolveAccessPolicyMatrix(t *testing.T) {
 			wantURL:  "https://media.example.com/users/user-1/image/test.png",
 		},
 		{
+			name:     "provider prefers signed origin over CDN",
+			resource: testReadyResource("aliyun"),
+			setting:  storage.Settings{Provider: "aliyun", Endpoint: "https://s3.amazonaws.com", Bucket: "private-bucket", CDNBaseURL: "https://media.example.com", AccessKeyID: "id", AccessKeySecret: "secret", Delivery: storage.DeliverySettings{CDNAuthMode: "public"}},
+			options:  AccessOptions{Purpose: PurposeProvider},
+			wantMode: DeliveryOrigin,
+		},
+		{
+			name:     "provider respects mandatory CDN",
+			resource: testReadyResource("aliyun"),
+			setting:  storage.Settings{Provider: "aliyun", Endpoint: "https://s3.amazonaws.com", Bucket: "private-bucket", CDNBaseURL: "https://media.example.com", Delivery: storage.DeliverySettings{CDNAuthMode: "public", RequireCDN: true}},
+			options:  AccessOptions{Purpose: PurposeProvider},
+			wantMode: DeliveryCDN,
+			wantURL:  "https://media.example.com/users/user-1/image/test.png",
+		},
+		{
+			name:     "provider with private origin retains CDN",
+			resource: testReadyResource("aliyun"),
+			setting:  storage.Settings{Provider: "aliyun", Endpoint: "http://storage.internal", CDNBaseURL: "https://media.example.com", Delivery: storage.DeliverySettings{CDNAuthMode: "public"}},
+			options:  AccessOptions{Purpose: PurposeProvider},
+			wantMode: DeliveryCDN,
+			wantURL:  "https://media.example.com/users/user-1/image/test.png",
+		},
+		{
 			name:     "CDN without supported auth falls back to public origin",
 			resource: testReadyResource("aliyun"),
 			setting:  storage.Settings{Provider: "aliyun", Endpoint: "https://s3.amazonaws.com", Bucket: "private-bucket", CDNBaseURL: "https://media.example.com", AccessKeyID: "id", AccessKeySecret: "secret"},
@@ -137,6 +160,33 @@ func TestResolveAccessVariantAndExpiryContract(t *testing.T) {
 	}
 	if provider.ExpiresAt == nil || !provider.ExpiresAt.Equal(now.Add(4*time.Hour)) {
 		t.Fatalf("provider access expiry = %v, want %v", provider.ExpiresAt, now.Add(4*time.Hour))
+	}
+}
+
+func TestResolveProviderQiniuUsesSignedOriginWhileDisplayUsesCDN(t *testing.T) {
+	now := time.Now().UTC()
+	setting := storage.Settings{
+		Provider: "qiniu", Region: "z0", Bucket: "private-bucket",
+		CDNBaseURL: "https://media.example.com", AccessKeyID: "id", AccessKeySecret: "secret",
+		Delivery: storage.DeliverySettings{CDNAuthMode: "qiniu"},
+		Runtime:  storage.RuntimePolicy{ProviderAccessURLTTL: 6 * time.Hour},
+	}
+	for _, purpose := range []AccessPurpose{PurposeProvider, PurposeDisplay} {
+		access, err := ResolveAccess(testReadyResource("qiniu"), setting, AccessOptions{Purpose: purpose}, now, testPlatformURL(&[]ResourceVariant{}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		parsed, err := url.Parse(access.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if purpose == PurposeProvider {
+			if access.Delivery != DeliveryOrigin || parsed.Host != "private-bucket.s3.cn-east-1.qiniucs.com" || parsed.Query().Get("X-Amz-Signature") == "" || access.ExpiresAt == nil || !access.ExpiresAt.Equal(now.Add(6*time.Hour)) {
+				t.Fatalf("unexpected provider access: %#v", access)
+			}
+		} else if access.Delivery != DeliveryCDN || parsed.Host != "media.example.com" || parsed.Query().Get("token") == "" {
+			t.Fatalf("unexpected display access: %#v", access)
+		}
 	}
 }
 

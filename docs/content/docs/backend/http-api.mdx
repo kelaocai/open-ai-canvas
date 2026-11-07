@@ -200,7 +200,7 @@ handle 放错端点、格式错误或行 ID 不存在时，工具错误回执提
 
 非媒体文件（包括可执行脚本的 SVG）通过平台本地读取或代理交付，强制 `Content-Disposition: attachment` 与 `Content-Security-Policy: sandbox; default-src 'none'`，不向浏览器或访问描述返回其 OSS/CDN 直链。普通图片、音频及视频保持原有媒体分发规则。历史资源不在本次变更中批量重新判型。
 
-资源展示、播放、下载、复制地址和模型输入统一消费资源访问合同，不在客户端通过 `direct=1`、`proxy=1` 或存储厂商规则选择出口。
+资源展示、播放、下载、复制地址和模型输入统一消费资源访问合同，不在客户端通过 `direct=1`、`proxy=1` 或存储厂商规则选择出口。服务端模型输入在未启用 `requireCDN` 且源站可公网访问时优先签发源站直链，避免海外 CDN 绕路；浏览器继续优先使用 CDN。私网源站和强制 CDN 配置保留原分发策略。
 
 - `POST /api/resources/access` 要求登录，请求体为 1–100 项 `{ resourceId, purpose?, variant? }`。`purpose` 支持 `display`、`copy`、`download`、`browser-process`、`provider-input`；`variant` 支持 `original`、`playback`、`thumbnail`（缩略图未生成前回落原件，`fallbackReason` 为 `thumbnail_not_ready`）。每项独立返回 `access` 或结构化 `error`。
 - `access.delivery` 为 `cdn`、`origin`、`platform-local` 或 `platform-proxy`。媒体配置了可用 CDN 时返回 CDN 地址；OSS 源站签名是源站直连，不等于 CDN。媒体的 `requireCDN` 开启且 CDN 鉴权不完整时失败，不静默回源。浏览器媒体的展示、复制、下载和本地处理不使用 `platform-proxy`，正文由 OSS/CDN 直接发送；`allowPrivateProxy` 允许服务端在 `provider-input` 场景读取私有媒体源站。非媒体附件始终通过平台控制响应头，不受上述媒体直连规则影响。
