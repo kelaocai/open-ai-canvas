@@ -25,6 +25,7 @@ export function requestCreditCost(options: { channelMode: string; modelCosts?: M
         if (!tiers.length) return null;
         const first = tiers[0];
         if (!first || first.billingMode === "token") return null;
+        if (tiers.some((tier) => (tier.referenceImagePriceMicrocredits || 0) > 0 || (tier.referenceVideoPriceMicrocredits || 0) > 0)) return null;
         // 同一精确规格可能来自多个逻辑路由；只有价格一致时才可在客户端安全展示。
         if (tiers.some((tier) => tier.billingMode !== first.billingMode || tier.unitPriceMicrocredits !== first.unitPriceMicrocredits)) return null;
         return creditAmount(first.billingMode, first.unitPriceMicrocredits, options.count, options.seconds);
@@ -85,6 +86,9 @@ export function formatPriceRange(values: number[], suffix: string) {
 export function modelQuoteDescription(quote: LogicalModelQuote) {
     const amount = (quote.amountMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 6 });
     const descriptions = [`${quote.estimated ? "预计" : "本次"}消耗 ${amount} 积分`];
+    if ((quote.referenceAmountMicrocredits || 0) > 0)
+        descriptions.push(`含参考素材 ${(quote.referenceAmountMicrocredits! / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 6 })} 积分（图片 ${quote.referenceImageCount || 0} 张、输入视频 ${(quote.referenceVideoMillis || 0) / 1000} 秒）`);
+    if (quote.referenceDurationEstimated) descriptions.push("参考视频时长暂按模型单段上限估算，下单按服务器核验时长计费");
     const estimate = quote.videoTokenEstimate;
     if (estimate) {
         descriptions.push(`公式预估 ${estimate.formulaTokens.toLocaleString("zh-CN")} 视频 Token，平台额外预留 ${estimate.reservationMarginPercent}%（共 ${estimate.reservedTokens.toLocaleString("zh-CN")} Token）`);

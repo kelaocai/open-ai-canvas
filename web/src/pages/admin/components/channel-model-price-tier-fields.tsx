@@ -225,6 +225,16 @@ export function PriceTierFields({
                             </div>
                         ) : null}
                         <CreditCostFields index={index} form={form} billingMode={billingMode} isVideo={isVideo} />
+                        {isVideo && billingMode === "per_second" ? (
+                            <div className="admin-price-tier-token-grid">
+                                <Form.Item name={[index, "referenceImagePrice"]} label={`参考图片售价（${priceUnit}/张）`}>
+                                    <InputNumber className="w-full" min={0} max={1_000_000} precision={6} />
+                                </Form.Item>
+                                <Form.Item name={[index, "referenceVideoPrice"]} label={`参考视频售价（${priceUnit}/秒）`}>
+                                    <InputNumber className="w-full" min={0} max={1_000_000} precision={6} />
+                                </Form.Item>
+                            </div>
+                        ) : null}
                     </section>
                 </div>
                 {staleTierUpstream ? (

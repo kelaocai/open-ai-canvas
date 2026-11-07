@@ -13,6 +13,7 @@ var ErrChannelModelPriceConflict = errors.New("模型价格已变化，请刷新
 // Called in the same transaction as the version-checked sale price update.
 func (r *Repository) SetAutomationTierCost(modelID, tierID string, c model.CreditCostPricing) error {
 	result := r.db.Model(&model.ChannelModelPriceTier{}).Where("id=? AND channel_model_id=?", tierID, modelID).Updates(map[string]any{
+		"cost_reference_image_price_microcredits": c.ReferenceImagePriceMicrocredits, "cost_reference_video_price_microcredits": c.ReferenceVideoPriceMicrocredits,
 		"cost_configured": true, "price_configured": true, "cost_unit_price_microcredits": c.UnitPriceMicrocredits, "cost_input_token_price_microcredits": c.InputTokenPriceMicrocredits, "cost_output_token_price_microcredits": c.OutputTokenPriceMicrocredits, "cost_cached_token_price_microcredits": c.CachedTokenPriceMicrocredits, "cost_cache_write_token_price_microcredits": c.CacheWriteTokenPriceMicrocredits})
 	if result.Error != nil {
 		return result.Error
@@ -52,6 +53,8 @@ func (r *Repository) UpdateChannelModelSalePrices(channelID string, items []mode
 					Where("id = ? AND channel_model_id = ? AND price_version = ? AND updated_at = ?", tier.ID, item.ID, tier.PriceVersion, tier.UpdatedAt).
 					Updates(map[string]any{
 						"unit_price_microcredits":              tier.UnitPriceMicrocredits,
+						"reference_image_price_microcredits":   tier.ReferenceImagePriceMicrocredits,
+						"reference_video_price_microcredits":   tier.ReferenceVideoPriceMicrocredits,
 						"input_token_price_microcredits":       tier.InputTokenPriceMicrocredits,
 						"output_token_price_microcredits":      tier.OutputTokenPriceMicrocredits,
 						"cached_token_price_microcredits":      tier.CachedTokenPriceMicrocredits,

@@ -13,6 +13,10 @@ export function normalizeUpstreamModelKey(value: unknown): string {
 }
 
 export type PriceTierFormValues = {
+    referenceImagePrice?: number;
+    referenceVideoPrice?: number;
+    costReferenceImagePrice?: number;
+    costReferenceVideoPrice?: number;
     imageSelector?: Record<string, string>;
     matchMode: PriceTierMatchMode;
     operation: string;
@@ -101,6 +105,10 @@ export function priceTierToForm(tier: ChannelModelPriceTier, image?: ImageCapabi
         providerModelKey: tier.providerModelKey || "",
         billingMode: tier.billingMode,
         unitPrice: tier.unitPriceMicrocredits / 1_000_000,
+        referenceImagePrice: (tier.referenceImagePriceMicrocredits || 0) / 1_000_000,
+        referenceVideoPrice: (tier.referenceVideoPriceMicrocredits || 0) / 1_000_000,
+        costReferenceImagePrice: (tier.costPricing?.referenceImagePriceMicrocredits || 0) / 1_000_000,
+        costReferenceVideoPrice: (tier.costPricing?.referenceVideoPriceMicrocredits || 0) / 1_000_000,
         inputTokenPrice: tier.inputTokenPriceMicrocredits / 1_000_000,
         outputTokenPrice: tier.outputTokenPriceMicrocredits / 1_000_000,
         cachedTokenPrice: tier.cachedTokenPriceMicrocredits / 1_000_000,
@@ -181,11 +189,15 @@ export function priceTierPayloadFromForm(capability: ModelCapabilityChoice, tier
         providerModelKey: tier.providerModelKey?.trim() || upstreamModel,
         billingMode: tier.billingMode,
         unitPriceMicrocredits: Math.round((tier.unitPrice || 0) * 1_000_000),
+        referenceImagePriceMicrocredits: capability === "video" && tier.billingMode === "per_second" ? Math.round((tier.referenceImagePrice || 0) * 1_000_000) : 0,
+        referenceVideoPriceMicrocredits: capability === "video" && tier.billingMode === "per_second" ? Math.round((tier.referenceVideoPrice || 0) * 1_000_000) : 0,
         inputTokenPriceMicrocredits: videoTokens ? 0 : Math.round((tier.inputTokenPrice || 0) * 1_000_000),
         outputTokenPriceMicrocredits: Math.round((tier.outputTokenPrice || 0) * 1_000_000),
         cachedTokenPriceMicrocredits: videoTokens ? 0 : Math.round((tier.cachedTokenPrice || 0) * 1_000_000),
         cacheWriteTokenPriceMicrocredits: videoTokens ? 0 : Math.round((tier.cacheWriteTokenPrice || 0) * 1_000_000),
         costPricing: {
+            referenceImagePriceMicrocredits: capability === "video" && tier.billingMode === "per_second" ? Math.round((tier.costReferenceImagePrice || 0) * 1_000_000) : 0,
+            referenceVideoPriceMicrocredits: capability === "video" && tier.billingMode === "per_second" ? Math.round((tier.costReferenceVideoPrice || 0) * 1_000_000) : 0,
             configured: tier.costConfigured,
             unitPriceMicrocredits: Math.round(tier.costUnitPrice * 1_000_000),
             inputTokenPriceMicrocredits: videoTokens ? 0 : Math.round(tier.costInputTokenPrice * 1_000_000),

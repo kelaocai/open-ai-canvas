@@ -51,6 +51,8 @@ export type PublicLogicalModel = {
 };
 
 export type PublicLogicalModelPriceTier = {
+    referenceImagePriceMicrocredits?: number;
+    referenceVideoPriceMicrocredits?: number;
     selector: Record<string, string>;
     resolution: string;
     videoSeconds: number;
@@ -127,6 +129,10 @@ export type RouteSimulationResult = {
 };
 
 export type LogicalModelQuote = {
+    referenceAmountMicrocredits?: number;
+    referenceImageCount?: number;
+    referenceVideoMillis?: number;
+    referenceDurationEstimated?: boolean;
     logicalModelId: string;
     billingMode: PublicLogicalModel["billingMode"];
     quantity: number;
@@ -201,6 +207,8 @@ export type PublicChannelModelAvailabilityDay = {
 };
 
 export type PublicChannelModelPriceTier = {
+    referenceImagePriceMicrocredits?: number;
+    referenceVideoPriceMicrocredits?: number;
     id: string;
     selector?: Record<string, string>;
     resolution: string;

@@ -79,6 +79,8 @@ export type ChannelModel = {
 };
 
 export type ChannelModelPriceTier = {
+    referenceImagePriceMicrocredits?: number;
+    referenceVideoPriceMicrocredits?: number;
     /** 仅管理员模型编辑接口返回，不能复制到用户模型目录。 */
     costPricing?: CreditCostPricing;
     id: string;
@@ -102,6 +104,8 @@ export type ChannelModelPriceTier = {
 };
 
 export type CreditCostPricing = {
+    referenceImagePriceMicrocredits?: number;
+    referenceVideoPriceMicrocredits?: number;
     configured: boolean;
     unitPriceMicrocredits: number;
     inputTokenPriceMicrocredits: number;
@@ -386,7 +390,16 @@ export function deleteAdminChannelModels(channelId: string, modelIds: string[]) 
 export type ChannelModelRepriceInput = {
     modelId: string;
     priceVersion: number;
-    priceTiers: { id: string; priceVersion: number; prices: Partial<Record<"unitPriceMicrocredits" | "inputTokenPriceMicrocredits" | "outputTokenPriceMicrocredits" | "cachedTokenPriceMicrocredits" | "cacheWriteTokenPriceMicrocredits", number>> }[];
+    priceTiers: {
+        id: string;
+        priceVersion: number;
+        prices: Partial<
+            Record<
+                "referenceImagePriceMicrocredits" | "referenceVideoPriceMicrocredits" | "unitPriceMicrocredits" | "inputTokenPriceMicrocredits" | "outputTokenPriceMicrocredits" | "cachedTokenPriceMicrocredits" | "cacheWriteTokenPriceMicrocredits",
+                number
+            >
+        >;
+    }[];
 };
 
 export function repriceAdminChannelModels(channelId: string, models: ChannelModelRepriceInput[]) {

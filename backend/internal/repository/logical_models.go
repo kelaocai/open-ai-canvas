@@ -299,6 +299,9 @@ func (r *Repository) SwitchTaskLogicalRoute(taskID string, expectedRouteID strin
 		now := time.Now()
 		updates := map[string]any{"channel_id": channelID, "channel_model_id": channelModelID, "updated_at": now}
 		updates["cost_configured"] = cost.CostPricing.Configured
+		updates["cost_reference_image_price_microcredits"] = cost.CostPricing.ReferenceImagePriceMicrocredits
+		updates["cost_reference_video_price_microcredits"] = cost.CostPricing.ReferenceVideoPriceMicrocredits
+		updates["cost_reference_amount_microcredits"] = cost.CostReferenceAmountMicrocredits
 		updates["cost_unit_price_microcredits"] = cost.CostPricing.UnitPriceMicrocredits
 		updates["cost_input_token_price_microcredits"] = cost.CostPricing.InputTokenPriceMicrocredits
 		updates["cost_output_token_price_microcredits"] = cost.CostPricing.OutputTokenPriceMicrocredits
@@ -363,6 +366,9 @@ func (r *Repository) SwitchTaskLogicalRoute(taskID string, expectedRouteID strin
 				}
 			}
 			updates["billing_mode"] = replacement.BillingMode
+			updates["reference_amount_microcredits"] = replacement.ReferenceAmountMicrocredits
+			updates["reference_image_count"] = replacement.ReferenceImageCount
+			updates["reference_video_millis"] = replacement.ReferenceVideoMillis
 			updates["price_version"] = replacement.PriceVersion
 			updates["price_tier_id"] = replacement.PriceTierID
 			updates["price_tier_version"] = replacement.PriceTierVersion

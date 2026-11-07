@@ -25,6 +25,10 @@ description: 信封、错误码与 OpenAPI
 
 ## 视频工作台的生成模式
 
+按秒计费的视频价格档可配置 `referenceImagePriceMicrocredits`（每张）与 `referenceVideoPriceMicrocredits`（每秒），0 表示不额外收费。对应管理员 `costPricing` 可填写同名成本单价；成本不进入公开目录和用户报价。公开价格档的素材售价和输出售价采用同一货币换算、分组倍率。
+
+`POST /api/model-catalog/quote` 返回的 `quote` 增加 `referenceAmountMicrocredits`、`referenceImageCount`、`referenceVideoMillis`、`referenceDurationEstimated`。`amountMicrocredits` 已包含素材费用，不能再次相加。未知输入视频时长按模型单段上限估算，`estimated` 与 `referenceDurationEstimated` 为 true；正式任务从已上传资源核验真实时长并固化账单，未核验的外部参考视频地址不能创建这类付费任务。
+
 `POST /api/workbench/tasks` 的视频任务根据已校验的 `references` 推导操作类型，客户端不需要提交泛化的 `video` 操作：
 
 | 输入 | 操作 |

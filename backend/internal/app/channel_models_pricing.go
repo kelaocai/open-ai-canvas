@@ -116,6 +116,9 @@ func (s *Service) normalizeChannelModelPriceTiers(req ChannelModelRequest, capab
 	result := make([]model.ChannelModelPriceTier, 0, len(inputs))
 	seen := make(map[string]bool, len(inputs))
 	for _, input := range inputs {
+		if err := validateReferencePrices(capability, input.BillingMode, input.ReferenceImagePriceMicrocredits, input.ReferenceVideoPriceMicrocredits); err != nil {
+			return nil, err
+		}
 		var parameters []protocolcontract.ImageParameter
 		if req.CapabilityConfig != nil && req.CapabilityConfig.Image != nil {
 			parameters = req.CapabilityConfig.Image.Parameters
@@ -145,6 +148,8 @@ func (s *Service) normalizeChannelModelPriceTiers(req ChannelModelRequest, capab
 		}
 		enabled := input.Enabled == nil || *input.Enabled
 		result = append(result, model.ChannelModelPriceTier{
+			ReferenceImagePriceMicrocredits:  input.ReferenceImagePriceMicrocredits,
+			ReferenceVideoPriceMicrocredits:  input.ReferenceVideoPriceMicrocredits,
 			CostPricing:                      input.CostPricing,
 			ID:                               id,
 			SelectorKey:                      key,
@@ -309,6 +314,9 @@ func normalizeChannelModelTierSelector(capability string, input ChannelModelPric
 }
 
 func validateChannelModelTierPricing(capability string, protocol model.ChannelInterfaceType, billingMode string, input ChannelModelPriceTierRequest) error {
+	if err := validateReferencePrices(capability, billingMode, input.ReferenceImagePriceMicrocredits, input.ReferenceVideoPriceMicrocredits); err != nil {
+		return err
+	}
 	if err := validateCreditCostPricing(capability, billingMode, input.CostPricing); err != nil {
 		return err
 	}

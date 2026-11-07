@@ -6,6 +6,24 @@ import { apiClient } from "../src/services/api/request";
 const intent: ModelRequestIntent = { capability: "video", operation: "text_to_video", inputs: { image: 0, video: 0, audio: 0 }, options: { videoSeconds: 5, videoGenerateAudio: false } };
 const quote: LogicalModelQuote = { logicalModelId: "", billingMode: "token", quantity: 1, amountMicrocredits: 500_000, estimated: true };
 
+test("reference material costs are disclosed as included in the quote total", () => {
+    const description = modelQuoteDescription({
+        logicalModelId: "",
+        billingMode: "per_second",
+        quantity: 5,
+        amountMicrocredits: 1_394_000_000,
+        estimated: true,
+        referenceAmountMicrocredits: 1_059_000_000,
+        referenceImageCount: 2,
+        referenceVideoMillis: 15_000,
+        referenceDurationEstimated: true,
+    });
+    expect(description).toContain("1,394");
+    expect(description).toContain("含参考素材 1,059");
+    expect(description).toContain("图片 2 张、输入视频 15 秒");
+    expect(description).toContain("下单按服务器核验时长计费");
+});
+
 describe("model quote API targets", () => {
     test("direct system videos send the actual options and cancellation signal to the catalog quote", async () => {
         const original = apiClient.request;
@@ -47,7 +65,18 @@ describe("model quote API targets", () => {
 test("video estimates disclose platform reserves, unknown references and final settlement", () => {
     const description = modelQuoteDescription({
         ...quote,
-        videoTokenEstimate: { formulaTokens: 100_000, reservedTokens: 110_000, outputWidth: 1280, outputHeight: 720, framesPerSecond: 24, outputSeconds: 5, referenceSeconds: 15, referenceDurationEstimated: true, dimensionsEstimated: true, reservationMarginPercent: 10 },
+        videoTokenEstimate: {
+            formulaTokens: 100_000,
+            reservedTokens: 110_000,
+            outputWidth: 1280,
+            outputHeight: 720,
+            framesPerSecond: 24,
+            outputSeconds: 5,
+            referenceSeconds: 15,
+            referenceDurationEstimated: true,
+            dimensionsEstimated: true,
+            reservationMarginPercent: 10,
+        },
     });
     expect(description).toContain("预计消耗 0.5 积分");
     expect(description).toContain("公式预估 100,000 视频 Token");

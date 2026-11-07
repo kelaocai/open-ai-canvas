@@ -33,9 +33,13 @@ type CreditLedgerEntry struct {
 }
 
 type BillingOrder struct {
-	BillingCostSnapshot `json:"-" gorm:"embedded"`
-	ID                  string `json:"id" gorm:"primaryKey;size:36"`
-	UserID              string `json:"userId" gorm:"size:36;index;uniqueIndex:idx_billing_user_idempotency,priority:1"`
+	ReferenceDurationEstimated  bool  `json:"-" gorm:"-"`
+	ReferenceAmountMicrocredits int64 `json:"referenceAmountMicrocredits" gorm:"not null;default:0"`
+	ReferenceImageCount         int64 `json:"referenceImageCount" gorm:"not null;default:0"`
+	ReferenceVideoMillis        int64 `json:"referenceVideoMillis" gorm:"not null;default:0"`
+	BillingCostSnapshot         `json:"-" gorm:"embedded"`
+	ID                          string `json:"id" gorm:"primaryKey;size:36"`
+	UserID                      string `json:"userId" gorm:"size:36;index;uniqueIndex:idx_billing_user_idempotency,priority:1"`
 	// 仅管理端列表填充，不入库。
 	UserDisplayName string `json:"userDisplayName,omitempty" gorm:"-"`
 	UserAccount     string `json:"userAccount,omitempty" gorm:"-"`

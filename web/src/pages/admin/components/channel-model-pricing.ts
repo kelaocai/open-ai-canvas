@@ -13,7 +13,16 @@ export function formatModelMarkup(cost: number | undefined, sale: number | undef
 }
 
 export function modelPriceFields(tier: ChannelModelPriceTier, capability: ChannelModel["capability"]) {
-    if (tier.billingMode !== "token") return [{ key: "unitPriceMicrocredits" as const, label: "", unit: tier.billingMode === "per_second" ? "秒" : "次" }];
+    if (tier.billingMode !== "token") {
+        const base = [{ key: "unitPriceMicrocredits" as const, label: "", unit: tier.billingMode === "per_second" ? "秒" : "次" }];
+        if (
+            capability === "video" &&
+            tier.billingMode === "per_second" &&
+            (tier.referenceImagePriceMicrocredits || tier.referenceVideoPriceMicrocredits || tier.costPricing?.referenceImagePriceMicrocredits || tier.costPricing?.referenceVideoPriceMicrocredits)
+        )
+            return [...base, { key: "referenceImagePriceMicrocredits" as const, label: "参考图片", unit: "张" }, { key: "referenceVideoPriceMicrocredits" as const, label: "参考视频", unit: "秒" }];
+        return base;
+    }
     if (capability === "video") return [{ key: "outputTokenPriceMicrocredits" as const, label: "视频", unit: "百万视频 Token" }];
     return [
         { key: "inputTokenPriceMicrocredits" as const, label: "输入", unit: "百万 Token" },
@@ -42,7 +51,7 @@ export function previewModelRepricing(items: ChannelModel[], markupPercent: numb
                 if (!tier.id || !tier.priceConfigured || !tier.costPricing?.configured) throw new Error(`${name}：请先保存完整的规格成本价和销售价配置`);
                 const next = { ...tier };
                 for (const { key } of modelPriceFields(tier, item.capability)) {
-                    const cost = tier.costPricing[key];
+                    const cost = key === "referenceImagePriceMicrocredits" || key === "referenceVideoPriceMicrocredits" ? (tier.costPricing[key] ?? 0) : tier.costPricing[key];
                     if (!validPrice(cost) || cost > 1_000_000_000_000) throw new Error(`${name}：成本价无效`);
                     // Round once at the selected credit precision, with exact half-up ties.
                     const numerator = BigInt(cost) * multiplier;
@@ -90,7 +99,7 @@ export function modelRepriceRows(items: ChannelModel[]): ModelRepriceRow[] {
                     model,
                     tier,
                     field,
-                    sale: tier.priceConfigured ? saleInputValue(tier[field.key]) : null,
+                    sale: tier.priceConfigured ? saleInputValue(tier[field.key] ?? 0) : null,
                     manual: false,
                 })),
             ),
@@ -110,7 +119,7 @@ export function modelRepricePayload(items: ChannelModel[], rows: ModelRepriceRow
                 if (!tier.id || !tier.priceConfigured || !tier.costPricing?.configured) throw new Error(`${item.displayName || item.modelKey}：请先配置规格成本价和销售价`);
                 const prices: ChannelModelRepriceInput["priceTiers"][number]["prices"] = {};
                 for (const { key } of modelPriceFields(tier, item.capability)) {
-                    const cost = tier.costPricing[key];
+                    const cost = key === "referenceImagePriceMicrocredits" || key === "referenceVideoPriceMicrocredits" ? (tier.costPricing[key] ?? 0) : tier.costPricing[key];
                     if (!validPrice(cost) || cost > 1_000_000_000_000) throw new Error(`${item.displayName || item.modelKey}：成本价无效`);
                     const sale = parseSaleInput(byKey.get(`${tier.id}:${key}`)?.sale ?? null);
                     if (tier.billingMode === "token" && sale > 1_000_000_000_000) throw new Error("Token 售价不能超过 1,000,000 积分");

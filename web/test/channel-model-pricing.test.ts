@@ -30,6 +30,29 @@ test("20% markup uses cost × 1.2 and leaves inputs unchanged", () => {
     expect(result[0]!.priceTiers[0]!.costPricing).toEqual(item.priceTiers[0]!.costPricing);
 });
 
+test("reference images and input video rates survive repricing and its atomic payload", () => {
+    const video = {
+        ...item,
+        capability: "video" as const,
+        priceTiers: [
+            {
+                ...item.priceTiers[0]!,
+                billingMode: "per_second" as const,
+                referenceImagePriceMicrocredits: 27_000_000,
+                referenceVideoPriceMicrocredits: 67_000_000,
+                costPricing: { ...item.priceTiers[0]!.costPricing!, referenceImagePriceMicrocredits: 20_000_000, referenceVideoPriceMicrocredits: 50_000_000 },
+            },
+        ],
+    };
+    const repriced = previewModelRepricing([video], 33.33, 0);
+    const tier = repriced[0]!.priceTiers[0]!;
+    expect(tier.referenceImagePriceMicrocredits).toBe(27_000_000);
+    expect(tier.referenceVideoPriceMicrocredits).toBe(67_000_000);
+    const payload = modelRepricePayload(repriced, modelRepriceRows(repriced));
+    expect(payload[0]!.priceTiers[0]!.prices.referenceImagePriceMicrocredits).toBe(27_000_000);
+    expect(payload[0]!.priceTiers[0]!.prices.referenceVideoPriceMicrocredits).toBe(67_000_000);
+});
+
 test("token prices are independent and zero costs remain free", () => {
     const token = { ...item, priceTiers: [{ ...item.priceTiers[0]!, billingMode: "token" as const }] };
     const tier = previewModelRepricing([token], 20)[0]!.priceTiers[0]!;

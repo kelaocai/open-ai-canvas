@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -105,10 +106,11 @@ type ResolveBillingBatchResult struct {
 }
 
 type tokenBillingEstimate struct {
-	InputTokens  int64
-	OutputTokens int64
-	Video        *VideoTokenEstimate
-	Err          error
+	ReferenceInput map[string]any
+	InputTokens    int64
+	OutputTokens   int64
+	Video          *VideoTokenEstimate
+	Err            error
 }
 
 func (s *Service) Wallet(user *model.User, entryType string, page int, limit int) (*WalletSummary, error) {
@@ -512,6 +514,11 @@ func (s *Service) newLogicalModelBillingOrder(userID string, task *model.Task, i
 	if logicalModel.PricePolicy != "unified" {
 		return nil, BadAuthRequest("当前模型价格策略无效")
 	}
+	for _, tier := range channelModel.PriceTiers {
+		if tier.ReferenceImagePriceMicrocredits != 0 || tier.ReferenceVideoPriceMicrocredits != 0 || tier.CostPricing.ReferenceImagePriceMicrocredits != 0 || tier.CostPricing.ReferenceVideoPriceMicrocredits != 0 {
+			return nil, BadAuthRequest("参考素材分项计费模型请使用渠道定价")
+		}
+	}
 	// 统一价以积分配置，只叠加分组倍率（不叠加全局积分策略倍率，保持统一价语义）。
 	access, err := s.userGroupAccess(userID)
 	if err != nil {
@@ -702,12 +709,38 @@ func (s *Service) newBillingOrderWithPriceTier(userID string, taskID string, ide
 		Status:             model.BillingStatusReserved,
 	}
 	snapshotCreditCost(order, tier, requestedQuantity, tokenEstimate)
+	if tier.ReferenceImagePriceMicrocredits != 0 || tier.ReferenceVideoPriceMicrocredits != 0 || tier.CostPricing.ReferenceImagePriceMicrocredits != 0 || tier.CostPricing.ReferenceVideoPriceMicrocredits != 0 {
+		if taskID == "" && scene != "model_quote" {
+			return nil, BadAuthRequest("参考素材分项计费模型请通过生成任务提交")
+		}
+		images, millis, estimated, usageErr := s.referenceBillingUsage(userID, taskID, item, tokenEstimate.ReferenceInput)
+		if usageErr != nil {
+			return nil, usageErr
+		}
+		additional, amountErr := referenceMediaAmount(prices.ReferenceImage, prices.ReferenceVideo, images, millis, multiplierBPS)
+		if amountErr != nil {
+			return nil, amountErr
+		}
+		if additional > math.MaxInt64-order.AmountMicrocredits {
+			return nil, BadAuthRequest("参考素材计费金额溢出")
+		}
+		order.ReferenceAmountMicrocredits = additional
+		order.ReferenceImageCount, order.ReferenceVideoMillis = images, millis
+		order.AmountMicrocredits += additional
+		order.ReservedAmountMicrocredits = order.AmountMicrocredits
+		order.CostReferenceAmountMicrocredits, err = referenceMediaAmount(tier.CostPricing.ReferenceImagePriceMicrocredits, tier.CostPricing.ReferenceVideoPriceMicrocredits, images, millis, 10000)
+		if err != nil {
+			return nil, err
+		}
+		order.ReferenceDurationEstimated = estimated
+	}
 	return order, nil
 }
 
 // tierCreditPrices 是换算为微积分后的价格档单价。
 type tierCreditPrices struct {
 	Unit, Input, Output, Cached, CacheWrite int64
+	ReferenceImage, ReferenceVideo          int64
 }
 
 // groupTierPrices 把价格档按模型计价货币和用户分组换算成微积分，并合成全局积分策略倍率与分组倍率。
@@ -736,6 +769,8 @@ func groupTierPricesWithPolicy(policy CreditPolicy, access *userGroupAccess, ite
 		target *int64
 	}{
 		{tier.UnitPriceMicrocredits, &prices.Unit},
+		{tier.ReferenceImagePriceMicrocredits, &prices.ReferenceImage},
+		{tier.ReferenceVideoPriceMicrocredits, &prices.ReferenceVideo},
 		{tier.InputTokenPriceMicrocredits, &prices.Input},
 		{tier.OutputTokenPriceMicrocredits, &prices.Output},
 		{tier.CachedTokenPriceMicrocredits, &prices.Cached},
@@ -795,7 +830,9 @@ func estimateTaskTokens(input map[string]any) tokenBillingEstimate {
 
 func estimateTaskBillingTokens(input map[string]any, capability string) tokenBillingEstimate {
 	if capability == "video" {
-		return estimateArkVideoTokens(input)
+		estimate := estimateArkVideoTokens(input)
+		estimate.ReferenceInput = input
+		return estimate
 	}
 	return estimateTaskTokens(input)
 }

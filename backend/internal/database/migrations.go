@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const CurrentSchemaVersion int64 = 82
+const CurrentSchemaVersion int64 = 83
 
 const baselineSchemaChecksum = "sha256:open-ai-canvas-schema-v1-20260830"
 const schemaMigrationAppliedAtIndexChecksum = "sha256:schema-migrations-applied-at-index-v2-20260830"
@@ -282,6 +282,9 @@ var schemaMigrations = []migration{
 		return tx.AutoMigrate(&model.ArkPortraitSession{}, &model.ArkPortraitGroup{}, &model.ArkPortraitAsset{})
 	}},
 	{version: 82, name: "token_cache_write_price", checksum: "sha256:token-cache-write-price-v82-20261105", apply: migrateTokenCacheWritePrice},
+	{version: 83, name: "video_reference_media_prices", checksum: "sha256:video-reference-media-prices-v83-20261107", apply: func(tx *gorm.DB) error {
+		return tx.AutoMigrate(&model.ChannelModelPriceTier{}, &model.BillingOrder{})
+	}},
 }
 
 // migrateTokenCacheWritePrice 为文本 Token 定价增加缓存写入单价，为调用日志和账单增加缓存写入用量。

@@ -212,6 +212,8 @@ export function systemChannelModelChannels(channels: PublicChannelCatalog[]): Mo
                     videoSeconds: tier.videoSeconds || 0,
                     billingMode: tier.billingMode as "fixed_request" | "per_second" | "token",
                     unitPriceMicrocredits: tier.unitPriceMicrocredits || 0,
+                    referenceImagePriceMicrocredits: tier.referenceImagePriceMicrocredits || 0,
+                    referenceVideoPriceMicrocredits: tier.referenceVideoPriceMicrocredits || 0,
                     inputTokenPriceMicrocredits: tier.inputTokenPriceMicrocredits || 0,
                     outputTokenPriceMicrocredits: tier.outputTokenPriceMicrocredits || 0,
                     cachedTokenPriceMicrocredits: tier.cachedTokenPriceMicrocredits || 0,

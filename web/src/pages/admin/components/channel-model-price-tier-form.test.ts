@@ -48,6 +48,21 @@ test("新建默认价格档不携带上游键", () => {
     assert.equal(defaultPriceTier("advanced").providerModelKey, "");
 });
 
+test("视频参考素材售价与成本编辑后完整保留，切换计费方式清除附加费", () => {
+    const tier = { ...defaultPriceTier(), billingMode: "per_second" as const, referenceImagePrice: 27, referenceVideoPrice: 67, costReferenceImagePrice: 20, costReferenceVideoPrice: 50, costConfigured: true };
+    const payload = priceTierPayloadFromForm("video", tier, "MiniMax-H3");
+    assert.equal(payload.referenceImagePriceMicrocredits, 27_000_000);
+    assert.equal(payload.referenceVideoPriceMicrocredits, 67_000_000);
+    assert.equal(payload.costPricing.referenceImagePriceMicrocredits, 20_000_000);
+    assert.equal(payload.costPricing.referenceVideoPriceMicrocredits, 50_000_000);
+    const restored = priceTierToForm({ ...payload } as ChannelModelPriceTier);
+    assert.equal(restored.referenceImagePrice, 27);
+    assert.equal(restored.costReferenceVideoPrice, 50);
+    const switched = priceTierPayloadFromForm("video", { ...restored, billingMode: "token" }, "MiniMax-H3");
+    assert.equal(switched.referenceImagePriceMicrocredits, 0);
+    assert.equal(switched.costPricing.referenceVideoPriceMicrocredits, 0);
+});
+
 test("文本 Token 价格档回显并提交缓存写入价，旧档缺字段时按 0", () => {
     const base = {
         selector: {},

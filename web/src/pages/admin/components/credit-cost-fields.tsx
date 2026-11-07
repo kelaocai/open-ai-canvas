@@ -35,6 +35,16 @@ export function CreditCostFields({ index, form, billingMode, isVideo }: { index:
                             <InputNumber className="w-full" min={0} max={1_000_000} precision={6} step={0.1} />
                         </Form.Item>
                     ))}
+                    {isVideo && billingMode === "per_second" ? (
+                        <>
+                            <Form.Item name={[index, "costReferenceImagePrice"]} label="参考图片成本（积分/张）">
+                                <InputNumber className="w-full" min={0} max={1_000_000} precision={6} />
+                            </Form.Item>
+                            <Form.Item name={[index, "costReferenceVideoPrice"]} label="参考视频成本（积分/秒）">
+                                <InputNumber className="w-full" min={0} max={1_000_000} precision={6} />
+                            </Form.Item>
+                        </>
+                    ) : null}
                 </div>
             ) : null}
         </section>

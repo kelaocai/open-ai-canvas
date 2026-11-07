@@ -5,6 +5,14 @@ description: 影策后端核心持久化表与状态边界
 
 # 后端数据库
 
+## 视频参考素材分项计费（Schema 83）
+
+版本 83 `video_reference_media_prices` 为 `channel_model_price_tiers` 新增 `reference_image_price_microcredits`（每张参考图售价）、`reference_video_price_microcredits`（每秒输入视频售价），以及对应的 `cost_reference_image_price_microcredits`、`cost_reference_video_price_microcredits`。仅按秒计费的视频模型允许使用这些附加价格；未配置时为 0，旧模型行为不变。成本字段只在管理员接口公开。
+
+`billing_orders` 新增 `reference_image_count`、`reference_video_millis`、`reference_amount_microcredits` 和 `cost_reference_amount_microcredits`，并保存同名成本单价快照。所有新增列为 `NOT NULL DEFAULT 0`。订单总额包含输出时长费和参考素材费；结算、失败退款与成本统计都读取下单快照，不反查当前价格。
+
+参考视频正式下单只接受属于当前用户的已上传资源。服务器读取实际文件并用 ffprobe 核验时长，不信任客户端上传的 `durationMs`；读取失败、超限或无法探测时拒绝创建付费任务。报价只有素材数量时按模型单段时长上限估算并明确标记，不能把预估时长用于正式结算。统一价逻辑模型暂不支持这类分项价格，必须采用渠道定价。
+
 ## 文本 Token 缓存写入价（Schema 82）
 
 版本 82 `token_cache_write_price` 只补列，全部为 `NOT NULL DEFAULT 0`，旧价格档和旧账单的结算结果不变：

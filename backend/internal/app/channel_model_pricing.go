@@ -105,6 +105,10 @@ func applyChannelModelTierPrices(tier *model.ChannelModelPriceTier, capability s
 		return err
 	}
 	fields := map[string]*int64{"unitPriceMicrocredits": &tier.UnitPriceMicrocredits}
+	if capability == "video" && tier.BillingMode == "per_second" && (tier.ReferenceImagePriceMicrocredits != 0 || tier.ReferenceVideoPriceMicrocredits != 0 || tier.CostPricing.ReferenceImagePriceMicrocredits != 0 || tier.CostPricing.ReferenceVideoPriceMicrocredits != 0) {
+		fields["referenceImagePriceMicrocredits"] = &tier.ReferenceImagePriceMicrocredits
+		fields["referenceVideoPriceMicrocredits"] = &tier.ReferenceVideoPriceMicrocredits
+	}
 	if tier.BillingMode == "token" {
 		fields = map[string]*int64{"outputTokenPriceMicrocredits": &tier.OutputTokenPriceMicrocredits}
 		if capability != "video" {
@@ -124,6 +128,7 @@ func applyChannelModelTierPrices(tier *model.ChannelModelPriceTier, capability s
 		*target = *value
 	}
 	return validateChannelModelTierPricing(capability, protocol, tier.BillingMode, ChannelModelPriceTierRequest{
+		ReferenceImagePriceMicrocredits: tier.ReferenceImagePriceMicrocredits, ReferenceVideoPriceMicrocredits: tier.ReferenceVideoPriceMicrocredits,
 		CostPricing: tier.CostPricing, UnitPriceMicrocredits: tier.UnitPriceMicrocredits,
 		InputTokenPriceMicrocredits: tier.InputTokenPriceMicrocredits, OutputTokenPriceMicrocredits: tier.OutputTokenPriceMicrocredits,
 		CachedTokenPriceMicrocredits: tier.CachedTokenPriceMicrocredits, CacheWriteTokenPriceMicrocredits: tier.CacheWriteTokenPriceMicrocredits,

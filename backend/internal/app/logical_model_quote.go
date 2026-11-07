@@ -9,12 +9,16 @@ import (
 // LogicalModelQuote 是创作端当前参数命中的实际供应线路报价。
 // Token 视频在上游返回真实 usage 前只能预估，创建任务仍以账务预留逻辑为准。
 type LogicalModelQuote struct {
-	LogicalModelID     string              `json:"logicalModelId"`
-	BillingMode        string              `json:"billingMode"`
-	Quantity           int64               `json:"quantity"`
-	AmountMicrocredits int64               `json:"amountMicrocredits"`
-	Estimated          bool                `json:"estimated"`
-	VideoTokenEstimate *VideoTokenEstimate `json:"videoTokenEstimate,omitempty"`
+	ReferenceAmountMicrocredits int64               `json:"referenceAmountMicrocredits"`
+	ReferenceImageCount         int64               `json:"referenceImageCount"`
+	ReferenceVideoMillis        int64               `json:"referenceVideoMillis"`
+	ReferenceDurationEstimated  bool                `json:"referenceDurationEstimated"`
+	LogicalModelID              string              `json:"logicalModelId"`
+	BillingMode                 string              `json:"billingMode"`
+	Quantity                    int64               `json:"quantity"`
+	AmountMicrocredits          int64               `json:"amountMicrocredits"`
+	Estimated                   bool                `json:"estimated"`
+	VideoTokenEstimate          *VideoTokenEstimate `json:"videoTokenEstimate,omitempty"`
 }
 
 type ChannelModelQuoteRequest struct {
@@ -67,6 +71,10 @@ func validateQuoteIntent(intent ModelRequestIntent) error {
 
 func quoteFromOrder(logicalModelID string, order *model.BillingOrder, estimate tokenBillingEstimate) *LogicalModelQuote {
 	quote := &LogicalModelQuote{LogicalModelID: logicalModelID, BillingMode: order.BillingMode, Quantity: order.Quantity, AmountMicrocredits: order.AmountMicrocredits, Estimated: order.BillingMode == "token"}
+	quote.ReferenceAmountMicrocredits = order.ReferenceAmountMicrocredits
+	quote.ReferenceImageCount, quote.ReferenceVideoMillis = order.ReferenceImageCount, order.ReferenceVideoMillis
+	quote.ReferenceDurationEstimated = order.ReferenceDurationEstimated
+	quote.Estimated = quote.Estimated || order.ReferenceDurationEstimated
 	if order.BillingMode == "token" && order.Capability == "video" {
 		quote.VideoTokenEstimate = estimate.Video
 	}
@@ -118,6 +126,11 @@ func (s *Service) QuoteLogicalModel(userID string, logicalModelID string, intent
 
 	if routed.LogicalModel.PricePolicy != "unified" {
 		return nil, BadAuthRequest("当前模型价格策略无效")
+	}
+	for _, tier := range routed.ChannelModel.PriceTiers {
+		if tier.ReferenceImagePriceMicrocredits != 0 || tier.ReferenceVideoPriceMicrocredits != 0 || tier.CostPricing.ReferenceImagePriceMicrocredits != 0 || tier.CostPricing.ReferenceVideoPriceMicrocredits != 0 {
+			return nil, BadAuthRequest("参考素材分项计费模型请使用渠道定价")
+		}
 	}
 	pricing, err := access.pricing(model.PriceCurrencyCredits, routed.LogicalModel.Code)
 	if err != nil {

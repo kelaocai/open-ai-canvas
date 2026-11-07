@@ -87,6 +87,8 @@ type PublicChannelModel struct {
 
 // PublicChannelModelPriceTier 公开的渠道模型价格档（脱敏）
 type PublicChannelModelPriceTier struct {
+	ReferenceImagePriceMicrocredits  int64             `json:"referenceImagePriceMicrocredits"`
+	ReferenceVideoPriceMicrocredits  int64             `json:"referenceVideoPriceMicrocredits"`
 	ID                               string            `json:"id"`
 	Selector                         map[string]string `json:"selector,omitempty"`
 	Resolution                       string            `json:"resolution"`
@@ -221,6 +223,8 @@ func (s *Service) sanitizeChannelModel(cm *model.ChannelModel) (PublicChannelMod
 			}
 		}
 		publicTiers = append(publicTiers, PublicChannelModelPriceTier{
+			ReferenceImagePriceMicrocredits:  tier.ReferenceImagePriceMicrocredits,
+			ReferenceVideoPriceMicrocredits:  tier.ReferenceVideoPriceMicrocredits,
 			ID:                               tier.ID,
 			Selector:                         model.DecodeSKUSelector(tier.SelectorJSON),
 			Resolution:                       tier.Resolution,
@@ -283,7 +287,9 @@ func (s *Service) applyGroupCatalogPricing(policy CreditPolicy, access *userGrou
 	for index := range publicModel.PriceTiers {
 		tier := &publicModel.PriceTiers[index]
 		pricing, prices, err := groupTierPricesWithPolicy(policy, access, cm, &model.ChannelModelPriceTier{
-			UnitPriceMicrocredits: tier.UnitPriceMicrocredits, InputTokenPriceMicrocredits: tier.InputTokenPriceMicrocredits,
+			ReferenceImagePriceMicrocredits: tier.ReferenceImagePriceMicrocredits,
+			ReferenceVideoPriceMicrocredits: tier.ReferenceVideoPriceMicrocredits,
+			UnitPriceMicrocredits:           tier.UnitPriceMicrocredits, InputTokenPriceMicrocredits: tier.InputTokenPriceMicrocredits,
 			OutputTokenPriceMicrocredits: tier.OutputTokenPriceMicrocredits, CachedTokenPriceMicrocredits: tier.CachedTokenPriceMicrocredits,
 			CacheWriteTokenPriceMicrocredits: tier.CacheWriteTokenPriceMicrocredits,
 		}, cm.ModelKey)
@@ -291,6 +297,8 @@ func (s *Service) applyGroupCatalogPricing(policy CreditPolicy, access *userGrou
 			return err
 		}
 		tier.UnitPriceMicrocredits = effectiveCatalogPrice(prices.Unit, pricing.MultiplierBPS)
+		tier.ReferenceImagePriceMicrocredits = effectiveCatalogPrice(prices.ReferenceImage, pricing.MultiplierBPS)
+		tier.ReferenceVideoPriceMicrocredits = effectiveCatalogPrice(prices.ReferenceVideo, pricing.MultiplierBPS)
 		tier.InputTokenPriceMicrocredits = effectiveCatalogPrice(prices.Input, pricing.MultiplierBPS)
 		tier.OutputTokenPriceMicrocredits = effectiveCatalogPrice(prices.Output, pricing.MultiplierBPS)
 		tier.CachedTokenPriceMicrocredits = effectiveCatalogPrice(prices.Cached, pricing.MultiplierBPS)

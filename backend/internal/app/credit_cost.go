@@ -1,6 +1,7 @@
 package app
 
 import (
+	"math"
 	"yingce/backend/internal/kernel"
 	"yingce/backend/internal/model"
 )
@@ -13,6 +14,9 @@ func validateCreditCostPricing(capability, billingMode string, cost model.Credit
 	}
 	if !cost.Configured {
 		return nil
+	}
+	if err := validateReferencePrices(capability, billingMode, cost.ReferenceImagePriceMicrocredits, cost.ReferenceVideoPriceMicrocredits); err != nil {
+		return err
 	}
 	if billingMode != "token" {
 		capability = ""
@@ -66,6 +70,12 @@ func billingCreditCost(order model.BillingOrder) (*int64, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+	if order.CostReferenceAmountMicrocredits > 0 {
+		if amount > math.MaxInt64-order.CostReferenceAmountMicrocredits {
+			return nil, BadAuthRequest("参考素材成本金额溢出")
+		}
+		amount += order.CostReferenceAmountMicrocredits
 	}
 	return &amount, nil
 }
