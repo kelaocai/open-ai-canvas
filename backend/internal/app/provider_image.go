@@ -276,6 +276,18 @@ func geminiImageDataURLs(payload map[string]interface{}) ([]map[string]string, e
 	if len(images) == 0 {
 		return nil, errors.New("Gemini Images 接口没有返回图片")
 	}
+	if len(images) > 1 {
+		seen := make(map[[32]byte]bool)
+		unique := images[:0]
+		for _, item := range images {
+			identity := protocolInlineImageIdentity(item["dataUrl"])
+			if !seen[identity] {
+				seen[identity] = true
+				unique = append(unique, item)
+			}
+		}
+		images = unique
+	}
 	return images, nil
 }
 

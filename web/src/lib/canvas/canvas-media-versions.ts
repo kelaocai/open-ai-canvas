@@ -34,7 +34,7 @@ export function isMediaVersionNode(node: CanvasNodeData | null | undefined): nod
     if (!node) return false;
     if (node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video && node.type !== CanvasNodeType.Audio) return false;
     const metadata = node.metadata;
-    return !metadata?.isBatchRoot && !metadata?.batchRootId && !metadata?.imageLayerGroup && !metadata?.imageLayer && !metadata?.layerExtraction;
+    return !metadata?.imageLayerGroup && !metadata?.imageLayer && !metadata?.layerExtraction;
 }
 
 function hasMedia(media: Pick<CanvasNodeMetadata, "content" | "storageKey"> | undefined) {
@@ -83,11 +83,22 @@ export function currentMediaVersion(node: CanvasNodeData | null | undefined): Ca
     return versions.find((version) => mediaIdentity(version.media) === identity);
 }
 
-/** 存在可回看的版本（不只是当前显示的那一个）时才提供版本入口。 */
+/** 已登记的版本始终可发现，包含当前版本和转成批次节点前的历史。 */
 export function hasMediaVersionHistory(node: CanvasNodeData | null | undefined) {
     if (!isMediaVersionNode(node)) return false;
-    const current = currentMediaVersion(node);
-    return (node.metadata?.mediaVersions || []).some((version) => version.id !== current?.id);
+    return Boolean(node.metadata?.mediaVersions?.length);
+}
+
+function withoutImageBatchBindings(metadata: CanvasNodeMetadata): CanvasNodeMetadata {
+    const next = { ...metadata };
+    delete next.isBatchRoot;
+    delete next.batchRootId;
+    delete next.batchChildIds;
+    delete next.primaryImageId;
+    delete next.imageBatchExpanded;
+    delete next.batchFailedCount;
+    delete next.batchUsesReferenceImages;
+    return next;
 }
 
 function trimVersions(versions: CanvasMediaVersion[], keepId: string) {
@@ -131,7 +142,7 @@ export function mediaVersionFieldsBeforeReplace(node: CanvasNodeData | null | un
     return { mediaVersions: recorded.metadata?.mediaVersions, currentMediaVersionId: recorded.metadata?.currentMediaVersionId };
 }
 
-/** 生成结果原位提交后登记为当前版本；失败、生成中和批次节点不登记。 */
+/** 生成结果原位提交后登记当前版本；失败和生成中不登记，批次登记当前封面。 */
 export function recordCommittedMediaVersion(node: CanvasNodeData): CanvasNodeData {
     const status = node.metadata?.status;
     if (status === "loading" || status === "error") return node;
@@ -172,12 +183,28 @@ export function adoptMediaVersion(node: CanvasNodeData, versionId: string): Canv
     const version = node.metadata?.mediaVersions?.find((item) => item.id === versionId);
     if (!version || !hasMedia(version.media)) return null;
     // 旧任务绑定会让任务同步把节点重新标成失败或生成中，切换后解除绑定。
-    const metadata: CanvasNodeMetadata = resetGenerationTaskMetadata(ensureCurrentMediaVersion(node).metadata, "success");
+    const recorded = resetGenerationTaskMetadata(ensureCurrentMediaVersion(node).metadata, "success");
+    const metadata: CanvasNodeMetadata = node.metadata?.isBatchRoot ? withoutImageBatchBindings(recorded) : recorded;
     for (const key of MEDIA_KEYS) Object.assign(metadata, { [key]: version.media[key] });
     metadata.producedModel = version.generation?.producedModel;
     metadata.taskDurationMs = version.generation?.taskDurationMs;
     metadata.currentMediaVersionId = version.id;
     return { ...node, ...adoptedGeometry(node, version.media), metadata };
+}
+
+/** 恢复批次根节点时保留所有子图，将其解除批次绑定，防止封面同步覆盖恢复结果。 */
+export function adoptMediaVersionToNodes(nodes: CanvasNodeData[], nodeId: string, versionId: string): CanvasNodeData[] | null {
+    const target = nodes.find((node) => node.id === nodeId);
+    if (!target) return null;
+    const adopted = adoptMediaVersion(target, versionId);
+    if (!adopted) return null;
+    return nodes.map((node) => {
+        if (node.id === nodeId) return adopted;
+        if (!target.metadata?.isBatchRoot || node.metadata?.batchRootId !== nodeId) return node;
+        const metadata = { ...node.metadata };
+        delete metadata.batchRootId;
+        return { ...node, metadata };
+    });
 }
 
 /** 删除非当前版本；当前版本不能删除。 */
@@ -189,7 +216,7 @@ export function removeMediaVersion(node: CanvasNodeData, versionId: string): Can
 
 /** 版本预览用的临时节点：复用现有媒体组件，不写回画布。 */
 export function mediaVersionPreviewNode(node: CanvasNodeData, version: CanvasMediaVersion): CanvasNodeData {
-    const metadata: CanvasNodeMetadata = { ...node.metadata };
+    const metadata: CanvasNodeMetadata = withoutImageBatchBindings(node.metadata || {});
     for (const key of MEDIA_KEYS) Object.assign(metadata, { [key]: version.media[key] });
     return { ...node, id: `${node.id}:version:${version.id}`, metadata };
 }
@@ -198,7 +225,7 @@ export function mediaVersionPreviewNode(node: CanvasNodeData, version: CanvasMed
 export function createNodeFromMediaVersion(node: CanvasNodeData, versionId: string, id = nanoid()): CanvasNodeData | null {
     const version = node.metadata?.mediaVersions?.find((item) => item.id === versionId);
     if (!version || !hasMedia(version.media)) return null;
-    const metadata: CanvasNodeMetadata = resetGenerationTaskMetadata(node.metadata, "success");
+    const metadata: CanvasNodeMetadata = withoutImageBatchBindings(resetGenerationTaskMetadata(node.metadata, "success"));
     for (const key of MEDIA_KEYS) Object.assign(metadata, { [key]: version.media[key] });
     delete metadata.mediaVersions;
     delete metadata.currentMediaVersionId;

@@ -4,7 +4,6 @@ package app
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"net"
@@ -47,11 +46,11 @@ func finishProtocolResult(ctx context.Context, config providerConfig, mode strin
 	var references []protocol.MediaReference
 	switch mode {
 	case "image":
-		// 同一张内联图可能被 Gemini 兼容接口重复返回，入库和写 AIGC 标记前先去重。
+		// 内联 PNG 的溯源元数据可能不同，按静态画面去重后再入库，保留首张原始文件。
 		seen := make(map[[32]byte]bool)
 		for _, reference := range result.Images {
-			if reference.DataURL != "" {
-				hash := sha256.Sum256([]byte(reference.DataURL))
+			if reference.DataURL != "" && len(result.Images) > 1 {
+				hash := protocolInlineImageIdentity(reference.DataURL)
 				if seen[hash] {
 					continue
 				}

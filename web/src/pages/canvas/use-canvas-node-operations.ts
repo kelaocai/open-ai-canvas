@@ -12,7 +12,7 @@ import { createCanvasNode, isHiddenBatchChild, removeCanvasNodes } from "@/lib/c
 import { isolateCopiedNodeMetadata, nextCopiedNodeTitle } from "@/lib/canvas/canvas-node-copy";
 import { createCanvasImageEditCopy } from "@/lib/canvas/canvas-image-edit-copy";
 import { copyImageLayerSources } from "@/lib/canvas/canvas-image-layers";
-import { adoptMediaVersion, createNodeFromMediaVersion, mediaVersionAdoptBlock, removeMediaVersion } from "@/lib/canvas/canvas-media-versions";
+import { adoptMediaVersionToNodes, createNodeFromMediaVersion, mediaVersionAdoptBlock, removeMediaVersion } from "@/lib/canvas/canvas-media-versions";
 import { canvasEditLeases } from "@/services/canvas-edit-leases";
 import { CanvasNodeType, type CanvasConnection, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type CanvasNodeMetadata, type CanvasNodeTypeId, type ContextMenuState, type Position } from "@/types/canvas";
 import { cloneCanvasDrawing } from "@/lib/canvas/canvas-drawing-storage";
@@ -467,13 +467,13 @@ export function useCanvasNodeOperations({
     const adoptNodeMediaVersion = useCallback((nodeId: string, versionId: string) => {
         const target = nodesRef.current.find((node) => node.id === nodeId);
         if (!canEditMediaVersions(target)) return false;
-        const adopted = adoptMediaVersion(target, versionId);
-        if (!adopted) {
+        const next = adoptMediaVersionToNodes(nodesRef.current, nodeId, versionId);
+        if (!next) {
             message.error(translate("canvasPage.nodeOps.versionMediaUnavailable"));
             return false;
         }
-        commitNodes(nodesRef.current.map((node) => (node.id === nodeId ? adopted : node)));
-        const version = adopted.metadata?.mediaVersions?.find((item) => item.id === versionId);
+        commitNodes(next);
+        const version = next.find((node) => node.id === nodeId)?.metadata?.mediaVersions?.find((item) => item.id === versionId);
         message.success(translate("canvasPage.nodeOps.switchedVersion", { number: version?.number ?? "" }));
         return true;
     }, [canEditMediaVersions, commitNodes, message, nodesRef]);
